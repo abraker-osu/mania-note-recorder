@@ -1,0 +1,7 @@
+-r osu_analysis/requirements.txt
+-r osu_apiv1/requirements.txt
+
+numpy
+pyqt5
+pyqtgraph==0.11.0rc0
+watchdog
