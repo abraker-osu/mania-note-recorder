@@ -39,7 +39,9 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             with open(f'data/hit-offsets.json', 'r') as f:
                 self.data = json.loads(f.read())
                 self.__update_hits_analysis_data()
+
                 self.show()
+                self.__solve2()
         except FileNotFoundError: 
             try: os.makedirs('data')
             except FileExistsError: pass
@@ -193,7 +195,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         self.__update_data()
         self.__update_hits_distr_data()
         self.__update_hits_analysis_data()
-        #self.__update_analysis()
+        self.__solve2()
 
 
     def __update_data(self):
@@ -269,24 +271,6 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             pdf = vec_normal_distr(hits, avg, std)
 
             self.model_plot.setData(hits, pdf*len(offsets), pen='y')
-
-
-    def __update_analysis(self):
-        data = np.column_stack((self.data['distr_t'], self.data['mean_h']))
-        
-        select = (-self.y_bound < data[:, 1]) & (data[:, 1] < self.y_bound)
-        idx_min = np.argmin(data[select], 0)
-        p_A = data[select][idx_min[0]]
-
-        select = (data[:, 0] <= p_A[0])
-        idx_min = np.argmin(data[select], 0)
-        p_B = data[select][idx_min[0]]
-        
-        dxy = p_A - p_B
-        m = dxy[1]/dxy[0]
-        b = p_A[1] - m*p_A[0]
-
-        # TODO: create a line mx+b to graph
 
 
     def __get_analysis_data(self):
@@ -384,4 +368,80 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         for val in unique:
             freq[unique == val] = np.sum(data == val)
 
-        return unique, freq
+    def __solve2(self):
+        r = -1
+        t_min = 200
+        y = 0
+
+        d = 0.1
+
+        a_r = 0.01
+        a_t = 1
+        a_y = 1
+
+        r_err_hist = np.zeros(3)
+        t_err_hist = np.zeros(3)
+        y_err_hist = np.zeros(3)
+
+        step = 500
+
+        distr_t = np.asarray(self.data['distr_t'])
+        mean_h = np.asarray(self.data['mean_h'])
+
+        while step > 0:
+            step -= 1
+
+            # Calculate error
+            r_err = self.__calc_err(r + d, t_min, y) - self.__calc_err(r, t_min, y)
+            t_err = self.__calc_err(r, t_min + d, y) - self.__calc_err(r, t_min, y)
+            y_err = self.__calc_err(r, t_min, y + d) - self.__calc_err(r, t_min, y)
+
+            # Anti oscilation algorithm
+            r_err_hist[1:] = r_err_hist[:-1]
+            r_err_hist[0] = r_err
+
+            if (self.__is_opposite_sign(r_err_hist[0], r_err_hist[1])) and self.__is_opposite_sign(r_err_hist[1], r_err_hist[2]):
+                a_r /= 2
+
+            t_err_hist[1:] = t_err_hist[:-1]
+            t_err_hist[0] = t_err
+
+            if (self.__is_opposite_sign(t_err_hist[0], t_err_hist[1])) and self.__is_opposite_sign(t_err_hist[1], t_err_hist[2]):
+                a_t /= 2
+
+            y_err_hist[1:] = y_err_hist[:-1]
+            y_err_hist[0] = y_err
+
+            if (self.__is_opposite_sign(y_err_hist[0], y_err_hist[1])) and self.__is_opposite_sign(y_err_hist[1], y_err_hist[2]):
+                a_y /= 2
+
+            # Calculate new param values
+            r = r - a_r*r_err
+            t_min = t_min - a_t*t_err
+            y = y - a_y*y_err
+
+            # Visualize
+            #print((r_err, t_err, y_err), (r, t_min, y), (a_r, a_t, a_y))
+            #print(r_err_hist)
+
+            curve_fit = self.__softplus_func(distr_t, r, t_min, y)
+
+            idx_sort = np.argsort(self.data['distr_t'])
+            self.fit_plot.setData(distr_t[idx_sort], curve_fit[idx_sort], pen='y')
+
+        print(f'r = {r:.2f}   t_min = {t_min:.2f} ms ({(1000*60)/(t_min*2):.2f} bpm)  y = {y:.2f} ms   err = {self.__calc_err(r, t_min, y)/len(distr_t)}')
+
+
+    def __calc_err(self, r, t_min, y=0):
+        curve_fit = self.__softplus_func(np.asarray(self.data['distr_t']), r, t_min, y)
+        return np.sum(np.abs(np.asarray(self.data['mean_h']) - curve_fit))
+
+
+    def __softplus_func(self, t, r, t_min, y=0):
+        lin = r*(t - t_min)
+        lin[lin < 100] = np.log(np.exp(lin[lin < 100]) + 1)
+        return lin + y
+
+
+    def __is_opposite_sign(self, a, b):
+        return (a >= 0) != (b >= 0)
