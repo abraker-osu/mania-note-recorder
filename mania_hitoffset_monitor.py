@@ -39,6 +39,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             with open(f'data/hit-offsets.json', 'r') as f:
                 self.data = json.loads(f.read())
                 self.__update_hits_analysis_data()
+                self.show()
         except FileNotFoundError: 
             try: os.makedirs('data')
             except FileExistsError: pass
