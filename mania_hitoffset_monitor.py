@@ -143,12 +143,32 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
     def __graph_results(self, replay_path):
         time.sleep(1)
 
-        try: self.replay = ReplayIO.open_replay(replay_path)
+        try: reply, beatmap = self.__get_files(replay_path)
+        except ValueError: return
+
+        try: self.setWindowTitle(beatmap.metadata.name + ' ' + replay.get_name())
+        except AttributeError: pass
+
+        map_data = ManiaActionData.get_action_data(beatmap)
+        replay_data = ManiaActionData.get_action_data(replay)
+        score_data = ManiaScoreData.get_score_data(map_data, replay_data)
+
+        # Analysis data
+        note_intervals, offsets, timings = self.__get_analysis_data(beatmap.difficulty.cs, map_data, replay_data)
+
+        self.__update_data(note_intervals, offsets, timings)
+        self.__update_hits_distr_data(offsets, note_intervals)
+        self.__update_hits_analysis_data()
+        self.__solve2()
+
+
+    def __get_files(self, replay_path):
+        try: replay = ReplayIO.open_replay(replay_path)
         except Exception as e:
             print(f'Error opening replay: {e}')
             return
 
-        try: beatmap_data = OsuApiv1.fetch_beatmap_info(map_md5=self.replay.beatmap_hash, api_key=api_key)
+        try: beatmap_data = OsuApiv1.fetch_beatmap_info(map_md5=replay.beatmap_hash, api_key=api_key)
         except Exception as e:
             print(f'Error fetching beatmap info: {e}')
             return
@@ -174,7 +194,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             '[' : '[[]',
             ']' : '[]]',
             '/' : '',
-            ',' : '',
+            #',' : '',
             ':' : '',
         })
         results = glob.glob1(f'{path}', f'* [[]{version}[]].osu')
@@ -184,35 +204,61 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             return
 
         path = f'{path}/{results[0]}'
+        beatmap = BeatmapIO.open_beatmap(path)
 
-        self.beatmap = BeatmapIO.open_beatmap(path)
-        self.map_data = ManiaActionData.get_action_data(self.beatmap)
-        self.replay_data = ManiaActionData.get_action_data(self.replay)
-        self.score_data = ManiaScoreData.get_score_data(self.map_data, self.replay_data)
-
-        # Analysis data
-        self.note_intervals, self.offsets, self.timings = self.__get_analysis_data()
-
-        self.__update_data()
-        self.__update_hits_distr_data()
-        self.__update_hits_analysis_data()
-        self.__solve2()
+        return replay, beatmap
 
 
-    def __update_data(self):
-        try: self.setWindowTitle(self.beatmap.metadata.name + ' ' + self.replay.get_name())
-        except AttributeError: pass
-        
+    def __get_analysis_data(self, num_keys, map_data, score_data):
+        note_intervals = []
+        offsets        = []
+        timings        = []
+
+        for col in range(int(num_keys)):
+            # Get note times where needed to press for current column
+            map_filter = map_data[col] == ManiaActionData.PRESS
+            map_times  = map_data.index[map_filter].values
+
+            # Get scoring data for the current column
+            score_col = score_data.loc[col]
+
+            # Get score times associated with successful press for current column
+            hit_filter    = score_col['type'] == ManiaScoreData.TYPE_HITP
+            hit_map_times = score_col['map_t'][hit_filter].values
+
+            # Correlate map's note press timings to scoring press times
+            # Then get interval between the hit note and previous
+            hit_time_filter = np.isin(map_times, hit_map_times)
+            map_interval = np.diff(map_times)[hit_time_filter[1:]]
+
+            # Get replay hitoffsets and timings for those offsets
+            offset = (score_col['replay_t'] - score_col['map_t'])[hit_filter].values[1:]
+            timing = score_col['replay_t'][hit_filter].values[1:]
+
+            # Append data for column to overall data
+            note_intervals.append(map_interval)
+            offsets.append(offset)
+            timings.append(timing)
+
+            if len(offset) != len(map_interval):
+                print(f'len(offsets) != len(note_intervals) for col {col}')
+                print(f'len(map_times) = {len(map_times)}  len(hit_map_times) = {len(hit_map_times)}')
+                print(f'len(hit_filter) = {len(hit_filter)}  len(hit_time_filter[1:]) = {len(hit_time_filter[1:])}')
+
+        return np.concatenate(note_intervals), np.concatenate(offsets), np.concatenate(timings)
+
+
+    def __update_data(self, note_intervals, offsets, timings):
         # Plotting offset distribution
-        self.graphs['offset_time']['plot'].setData(self.timings, self.offsets, pen=None, symbol='o', symbolPen=None, symbolSize=2, symbolBrush=(100, 100, 255, 200))
-        self.graphs['offset_time']['widget'].setLimits(xMin=min(self.timings) - 100, xMax=max(self.timings) + 100)
+        self.graphs['offset_time']['plot'].setData(timings, offsets, pen=None, symbol='o', symbolPen=None, symbolSize=2, symbolBrush=(100, 100, 255, 200))
+        self.graphs['offset_time']['widget'].setLimits(xMin=min(timings) - 100, xMax=max(timings) + 100)
 
         # Plotting note interval distribution
-        interv_freqs = self.__get_freq_hist(self.note_intervals)
-        self.graphs['freq_interval']['plot'].setData(self.note_intervals, interv_freqs, pen=None, symbol='o', symbolSize=5, symbolPen=(255,255,255,150), symbolBrush=(0,0,255,150))
+        interv_freqs = self.__get_freq_hist(note_intervals)
+        self.graphs['freq_interval']['plot'].setData(note_intervals, interv_freqs, pen=None, symbol='o', symbolSize=5, symbolPen=(255,255,255,150), symbolBrush=(0,0,255,150))
 
-        self.region_plot.setRegion((min(self.note_intervals), max(self.note_intervals)))
-        self.region_plot.setBounds((min(self.note_intervals) - 10, max(self.note_intervals) + 10))
+        self.region_plot.setRegion((min(note_intervals), max(note_intervals)))
+        self.region_plot.setBounds((min(note_intervals) - 10, max(note_intervals) + 10))
 
         # Plotting mean & variance distribution w.r.t. note interval
         win_centers, means, variances = self.__get_stats_distr()
@@ -239,16 +285,15 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         self.graphs['offset_var_scatter']['plot'].setData(self.data['distr_t'], self.data['var_h'], pen=None, symbol='o', symbolPen=None, symbolSize=2, symbolBrush=pyqtgraph.mkBrush(0, 255, 0, 200))
 
 
-
-    def __update_hits_distr_data(self):
+    def __update_hits_distr_data(self, offsets, note_intervals):
         start, end = self.region_plot.getRegion()
 
         try:
-            offsets = self.offsets[(start <= self.note_intervals) & (self.note_intervals <= end)]
+            offsets = offsets[(start <= note_intervals) & (note_intervals <= end)]
         except IndexError as e:
-            print(len(self.offsets), len(self.note_intervals), len((start <= self.note_intervals) & (self.note_intervals <= end)))
-            print(self.offsets, self.note_intervals)
-            print((start <= self.note_intervals) & (self.note_intervals <= end))
+            print(len(offsets), len(note_intervals))
+            print(offsets, note_intervals)
+            print((start <= note_intervals) & (note_intervals <= end))
 
             raise e
 
@@ -274,34 +319,6 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             self.model_plot.setData(hits, pdf*len(offsets), pen='y')
 
 
-    def __get_analysis_data(self):
-        note_intervals = []
-        offsets        = []
-        timings        = []
-
-        for col in range(int(self.beatmap.difficulty.cs)):
-            map_filter  = self.map_data[col] == ManiaActionData.PRESS
-            map_col     = self.map_data[col][map_filter].values
-            map_times   = self.map_data.index[map_filter].values
-
-            score_col = self.score_data.loc[col]
-
-            hit_filter    = score_col['type'] == ManiaScoreData.TYPE_HITP
-            hit_map_times = score_col['map_t'][hit_filter].values
-
-            hit_time_filter = np.isin(map_times, hit_map_times)
-            map_interval = np.diff(map_times)[hit_time_filter[1:]]
-
-            offset = (score_col['replay_t'] - score_col['map_t'])[hit_filter].values[1:]
-            timing = score_col['replay_t'][hit_filter].values[1:]
-
-            note_intervals.append(map_interval)
-            offsets.append(offset)
-            timings.append(timing)
-
-        return np.concatenate(note_intervals), np.concatenate(offsets), np.concatenate(timings)
-
-
     def __region_changed(self):
         self.__update_hits_distr_data()
 
@@ -312,27 +329,27 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
 
     def __multiple_replace(self, text, dict):
         # Thanks https://stackoverflow.com/a/8687114/3256177
-        regex = re.compile("|".join(map(re.escape, dict.keys())))
+        regex = re.compile('|'.join(map(re.escape, dict.keys())))
         return regex.sub(lambda mo: dict[mo.group(0)], text)
 
 
-    def __get_stats_distr(self):
+    def __get_stats_distr(self, note_intervals, offsets):
         half_window_width = 10
 
         win_centers  = []
         means        = []
         variances    = []
 
-        note_intervals, note_interv_freqs = self.__get_freq(self.note_intervals)
+        note_interv_distr, note_interv_freqs = self.__get_freq(note_intervals)
         # TODO: This does not take peaks that are less than 50 but are split due to quantization, adding to 50+ if added
         # Example: See first peak https://i.imgur.com/Fy6zR8m.png
-        interval_peaks = note_intervals[note_interv_freqs >= 50]
+        note_interv_peaks = note_interv_distr[note_interv_freqs >= 50]
 
-        for peak in interval_peaks:
+        for peak in note_interv_peaks:
             start = peak - half_window_width
             end   = peak + half_window_width
 
-            window_offsets = self.offsets[((start - 1) <= self.note_intervals) & (self.note_intervals <= (end + 1))]
+            window_offsets = offsets[((start - 1) <= note_intervals) & (note_intervals <= (end + 1))]
 
             std = np.std(window_offsets)
             if variances == 0:
@@ -369,6 +386,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         for val in unique:
             freq[unique == val] = np.sum(data == val)
 
+        return unique, freq
     def __solve2(self):
         r = -1
         t_min = 200
