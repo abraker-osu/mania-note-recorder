@@ -117,6 +117,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         self.graphs['freq_offset']['widget'].setLabel('left', '# of hits', units='', unitPrefix='')
         self.graphs['freq_offset']['widget'].setLabel('bottom', 'Hit offset', units='ms', unitPrefix='')
 
+        self.fit_plot = self.graphs['offset_mean_scatter']['widget'].plot()
         self.model_plot = self.graphs['freq_offset']['widget'].plot()
 
         self.setCentralWidget(self.area)
