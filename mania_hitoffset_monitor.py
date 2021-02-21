@@ -388,7 +388,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             self.graphs['freq_offset']['plot'].setData(offsets, offset_freqs, pen=None, symbol='o', symbolSize=5, symbolPen=(255,255,255,150), symbolBrush=(0,0,255,150))
 
             # Plotting model of offset distribution (normal distribution)
-            hits = np.arange(-200, 200)
+            hits = np.arange(-ManiaScoreData.neg_hit_range, ManiaScoreData.pos_hit_range)
             avg  = np.mean(offsets)
             std  = np.std(offsets)
 
