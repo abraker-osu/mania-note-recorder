@@ -35,6 +35,6 @@ class Monitor(watchdog.observers.Observer):
         self.monitors[name] = self.schedule(EventHandler(), replay_path, recursive=False)
 
 
-    def create_map_montor(self, name, callback, beatmap_path):
+    def create_map_monitor(self, name, callback, beatmap_path):
         # TODO
         pass
