@@ -154,7 +154,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         print('New replay detected!')
 
         try: replay, beatmap = self.__get_files(replay_path)
-        except ValueError: return
+        except TypeError: return
 
         try: self.setWindowTitle(beatmap.metadata.name + ' ' + replay.get_name())
         except AttributeError: pass
@@ -334,7 +334,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         # Re-add lines
         self.graphs['offset_time']['widget'].addLine(x=None, y=0, pen=pyqtgraph.mkPen('y', width=1))
         for miss_timing in miss_timings:
-            self.graphs['offset_time']['widget'].addLine(x=miss_timing, y=None, pen=pyqtgraph.mkPen(color=(255, 0, 0, 100), width=1))
+            self.graphs['offset_time']['widget'].addLine(x=miss_timing, y=None, pen=pyqtgraph.mkPen(color=(255, 0, 0, 50), width=1))
 
 
     def __plot_note_interval_data(self, note_intervals, offsets, timings):
