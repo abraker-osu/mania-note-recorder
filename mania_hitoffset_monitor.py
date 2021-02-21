@@ -19,6 +19,7 @@ from osu_apiv1 import OsuApiv1
 
 from monitor import Monitor
 from api_key import api_key
+from miss_plot import MissPlotItem
 
 
 
@@ -114,6 +115,9 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         self.region_plot = pyqtgraph.LinearRegionItem([0, 1], 'vertical', swapMode='block', pen='r')
         self.region_plot.sigRegionChanged.connect(self.__region_changed)
         self.graphs['freq_interval']['widget'].addItem(self.region_plot)
+
+        self.miss_plot = MissPlotItem([])
+        self.graphs['offset_time']['widget'].addItem(self.miss_plot)
 
         self.graphs['offset_time']['widget'].addLine(x=None, y=0, pen=pyqtgraph.mkPen('y', width=1))
         self.graphs['offset_time']['widget'].setLabel('left', 'Hit offset', units='ms', unitPrefix='')
@@ -324,17 +328,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         # Set plot data
         self.graphs['offset_time']['plot'].setData(hit_timings, hit_offsets, pen=None, symbol='o', symbolPen=None, symbolSize=2, symbolBrush=(100, 100, 255, 200))
         self.graphs['offset_time']['widget'].setLimits(xMin=xMin, xMax=xMax)
-
-        # Remove all lines
-        items = self.graphs['offset_time']['widget'].sceneObj.items()
-        for item in items:
-            if type(item) == pyqtgraph.InfiniteLine:
-                self.graphs['offset_time']['widget'].removeItem(item)
-
-        # Re-add lines
-        self.graphs['offset_time']['widget'].addLine(x=None, y=0, pen=pyqtgraph.mkPen('y', width=1))
-        for miss_timing in miss_timings:
-            self.graphs['offset_time']['widget'].addLine(x=miss_timing, y=None, pen=pyqtgraph.mkPen(color=(255, 0, 0, 50), width=1))
+        self.miss_plot.setData(miss_timings)
 
 
     def __plot_note_interval_data(self, note_intervals, offsets, timings):
