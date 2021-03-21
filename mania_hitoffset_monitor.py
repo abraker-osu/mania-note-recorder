@@ -112,10 +112,14 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             widget    = pyqtgraph.PlotWidget(title='Note intervals distribution'),
         )   
 
+        # Note interval distribtions
         self.region_plot = pyqtgraph.LinearRegionItem([0, 1], 'vertical', swapMode='block', pen='r')
         self.region_plot.sigRegionChanged.connect(self.__region_changed)
         self.graphs['freq_interval']['widget'].addItem(self.region_plot)
+        self.graphs['freq_interval']['widget'].setLabel('left', 'Number of notes hit', units='', unitPrefix='')
+        self.graphs['freq_interval']['widget'].setLabel('bottom', 'Note interval', units='ms', unitPrefix='')
 
+        # Hits scatterplot
         self.miss_plot = MissPlotItem([])
         self.graphs['offset_time']['widget'].addItem(self.miss_plot)
 
@@ -123,11 +127,15 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         self.graphs['offset_time']['widget'].setLabel('left', 'Hit offset', units='ms', unitPrefix='')
         self.graphs['offset_time']['widget'].setLabel('bottom', 'Time since start', units='ms', unitPrefix='')
 
+        # Hits distribution
         self.graphs['freq_offset']['widget'].setLabel('left', '# of hits', units='', unitPrefix='')
         self.graphs['freq_offset']['widget'].setLabel('bottom', 'Hit offset', units='ms', unitPrefix='')
 
+        # Mean distribution scatter
         self.fit_plot = self.graphs['offset_mean_scatter']['widget'].plot()
         self.model_plot = self.graphs['freq_offset']['widget'].plot()
+        self.graphs['offset_mean_scatter']['widget'].setLabel('left', 'Mean hit offset', units='ms', unitPrefix='')
+        self.graphs['offset_mean_scatter']['widget'].setLabel('bottom', 'Note interval', units='ms', unitPrefix='')
 
         self.setCentralWidget(self.area)
 
