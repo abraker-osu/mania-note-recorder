@@ -484,18 +484,32 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
 
 
     def __solve(self):
-        distr_t = np.asarray(self.data['distr_t'])
-        mean_h = np.asarray(self.data['mean_h'])
+        distr_t = np.asarray(self.data['distr_t'])  # x
+        mean_h = np.asarray(self.data['mean_h'])    # y
 
-        p0x = min(distr_t[(0 <= mean_h) & (mean_h < 2)])
+        # Determine the y offset by getting the average mean offset within 16 ms range (60 fps)
+        p0y = np.average(mean_h[(-16 <= mean_h) & (mean_h < 16)])
+
+        # Standard deviation of the points in the non straining region
+        # This is used to center the model since the points determined initially are on the edge
+        p0y_std = np.std(mean_h[(-16 <= mean_h) & (mean_h < 16)])
+
+        # Get a region of points between 0 and 2 note interval
+        # Find the point that is left most in that region
+        # Then shift from left towards center of data using stdev
+        p0x = min(distr_t[(0 <= mean_h) & (mean_h < 2)]) + 2*p0y_std
+        
+        # Get a region of point that are greater than 0 mean offset
+        # Find the point that is left most in that region and top most in that region.
+        # Then shift from top towards center of data using stdev
         p1x = min(distr_t[0 <= distr_t])
-        p1y = max(mean_h[0 <= distr_t])
+        p1y = max(mean_h[0 <= distr_t]) - 2*p0y_std
 
         t_min = p0x
-        r = (0 - p1y)/(p0x - p1x)
+        r = (p0y - p1y)/(p0x - p1x)
         
-        print(f'r = {r}   t_min = {t_min}  err = {self.__calc_err(r, t_min)/len(distr_t)}')
-        curve_fit = self.__softplus_func(distr_t, r, t_min)
+        print(f'r = {r:.2f}   t_min = {t_min:.2f} ms ({(1000*60)/(t_min*2):.2f} bpm)  y = {p0y:.2f} ms  err = {self.__calc_err(r, t_min, p0y)/len(distr_t)}')
+        curve_fit = self.__softplus_func(distr_t, r, t_min, p0y)
 
         idx_sort = np.argsort(self.data['distr_t'])
         self.fit_plot.setData(distr_t[idx_sort], curve_fit[idx_sort], pen='y')
@@ -574,8 +588,8 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
 
     def __softplus_func(self, t, r, t_min, y=0):
         lin = r*(t - t_min)
-        lin[lin < 100] = np.log(np.exp(lin[lin < 100]) + 1)
-        return lin + y
+        lin[lin < 100] = np.log(np.exp(lin[lin < 100]) + np.exp(y))
+        return lin
 
 
     def __is_opposite_sign(self, a, b):
