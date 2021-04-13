@@ -1,9 +1,8 @@
 import os
-import re
 import time
 import math
 import json
-import glob
+import numpy as np
 
 import pyqtgraph
 from pyqtgraph import dockarea
@@ -11,14 +10,10 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 from PyQt5.QtGui import *
 
-import numpy as np
-
 from osu_analysis import ManiaActionData, ManiaScoreData
 from osu_analysis import BeatmapIO, ReplayIO, Gamemode
-from osu_apiv1 import OsuApiv1
-
+from osu_db_reader.osu_db_reader import OsuDbReader
 from monitor import Monitor
-from api_key import api_key
 from miss_plot import MissPlotItem
 
 
@@ -30,15 +25,11 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
     def __init__(self, osu_path):
         QtGui.QMainWindow.__init__(self)
 
-        self.__init_gui()
-
-        self.data = {
-            'distr_t' : [],
-            'mean_h' : [],
-            'var_h' : [],
-        }
+        os.makedirs('data', exist_ok=True)
 
         self.y_bound = 5
+
+        self.__init_gui()
 
         try:
             with open(f'data/hit-offsets.json', 'r') as f:
@@ -46,17 +37,20 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
                 self.__update_hits_analysis_data()
 
                 self.show()
-                self.__solve2()
+                #self.__solve2()
+                self.__solve()
         except FileNotFoundError: 
-            try: os.makedirs('data')
-            except FileExistsError: pass
+            self.data = {
+                'distr_t' : [],
+                'mean_h' : [],
+                'var_h' : [],
+            }
 
         self.osu_path = osu_path
         self.monitor = Monitor(osu_path)
         self.monitor.create_replay_monitor('Replay Grapher', self.__handle_new_replay)
 
         self.new_replay_event.connect(self.__handle_new_replay_qt)
-        #self.show()
 
 
     def closeEvent(self, event):
@@ -163,7 +157,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
 
 
     def __handle_new_replay_qt(self, replay_path):
-        print('New replay detected!')
+        #print('New replay detected!')
 
         try: replay, beatmap = self.__get_files(replay_path)
         except TypeError: return
@@ -183,11 +177,12 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         self.__plot_note_interval_data(self.hit_note_intervals, self.hit_offsets, hit_timings)
         self.__update_hit_distr_graphs(self.hit_note_intervals, self.hit_offsets)
         self.__update_hits_analysis_data()
-        self.__solve2()
+        #self.__solve2()
+        self.__solve()
 
 
     def __get_files(self, replay_path):
-        print('Loading replay...')
+        #print('Loading replay...')
 
         try: replay = ReplayIO.open_replay(replay_path)
         except Exception as e:
@@ -198,7 +193,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
             print('Only mania gamemode supported for now')            
             return
 
-        print(replay.mods)
+        #print(replay.mods)
 
         if replay.mods.has_mod('DT') or replay.mods.has_mod('NC'):
             print('DT and NC is not supported yet!')
@@ -206,45 +201,13 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
 
         print('Determining beatmap...')
 
-        try: beatmap_data = OsuApiv1.fetch_beatmap_info(map_md5=replay.beatmap_hash, api_key=api_key)
-        except Exception as e:
-            print(f'Error fetching beatmap info: {e}')
-            return
-
-        if len(beatmap_data) == 0:
-            print('Associated beatmap not found. Is it unsubmitted?')
-            return
-
-        beatmap_data = beatmap_data[0]
-        if int(beatmap_data['mode']) != Gamemode.MANIA:
-            print('Only mania gamemode supported for now')            
+        maps = self.maps_table.search(tinydb.where('md5') == replay.beatmap_hash)
+        if len(maps) == 0:
+            print('Associated beatmap not found. Do you have it?')
             return
 
         path = f'{self.osu_path}/Songs'
-        results = glob.glob(f'{path}/{beatmap_data["beatmapset_id"]} *')
-
-        if len(results) == 0:
-            print(f'Cannot find folder "{self.osu_path}/Songs/{beatmap_data["beatmapset_id"]} {beatmap_data["artist"]} - {beatmap_data["title"]}"')
-            return
-
-        path = results[0]
-        version = self.__multiple_replace(beatmap_data["version"], {
-            '[' : '[[]',
-            ']' : '[]]',
-            '/' : '',
-            #',' : '',
-            ':' : '',
-        })
-        results = glob.glob1(f'{path}', f'* [[]{version}[]].osu')
-        
-        if len(results) == 0:
-            print(f'Cannot find *.osu file "{path}/{beatmap_data["artist"]} - {beatmap_data["title"]} ({beatmap_data["creator"]}) [{beatmap_data["version"]}].osu"')
-            return
-
-        print('Loading beatmap...')
-
-        path = f'{path}/{results[0]}'
-        beatmap = BeatmapIO.open_beatmap(path)
+        beatmap = BeatmapIO.open_beatmap(f'{self.osu_path}/Songs/{maps[0]["path"]}')
 
         return replay, beatmap
 
@@ -421,12 +384,6 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
         return 1/(std*((2*math.pi)**0.5))*math.exp(-0.5*((x - avg)/std)**2)
 
 
-    def __multiple_replace(self, text, dict):
-        # Thanks https://stackoverflow.com/a/8687114/3256177
-        regex = re.compile('|'.join(map(re.escape, dict.keys())))
-        return regex.sub(lambda mo: dict[mo.group(0)], text)
-
-
     def __get_stats_distr(self, note_intervals, offsets):
         half_window_width = 10
 
@@ -507,6 +464,7 @@ class ManiaHitOffsetsMonitor(QtGui.QMainWindow):
 
         t_min = p0x
         r = (p0y - p1y)/(p0x - p1x)
+        #r = (0.05 - 0.95*t_min)/t_min
         
         print(f'r = {r:.2f}   t_min = {t_min:.2f} ms ({(1000*60)/(t_min*2):.2f} bpm)  y = {p0y:.2f} ms  err = {self.__calc_err(r, t_min, p0y)/len(distr_t)}')
         curve_fit = self.__softplus_func(distr_t, r, t_min, p0y)
