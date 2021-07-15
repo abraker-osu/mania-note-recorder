@@ -248,7 +248,7 @@ class Recorder(QtCore.QObject):
                 note_intervals[col] = intervals
 
             # Append data entries for column
-            data.append(np.c_[id_dat, timestamp, timings, offsets, htypes, col_dat, np.asarray(note_intervals).T])
+            data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat, np.asarray(note_intervals).T ])
 
         # Concate data accross all columns
         return np.concatenate(data)

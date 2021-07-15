@@ -106,6 +106,8 @@ class HitOffsetGraph():
         self.__offset_std_line_pos.setValue(std_offset*2 + mean_offset)
         self.__offset_std_line_neg.setValue(-std_offset*2 + mean_offset)
 
+        print(f'mean = {mean_offset:.2f} ms    std = {std_offset:.2f} ms')
+
 
     def __plot_avg_local(self, data):
         # Determine what was the latest play

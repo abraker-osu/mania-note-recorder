@@ -1,15 +1,7 @@
-import os
-import sys
-import time
-import numpy as np
-
 import pyqtgraph
-from pyqtgraph import dockarea
 from pyqtgraph.Qt import QtCore, QtGui
-
 from PyQt5.QtGui import *
 
-from osu_analysis import ManiaScoreData
 from osu_performance_recorder import Recorder, Data
 
 
@@ -17,12 +9,11 @@ from osu_performance_recorder import Recorder, Data
 class ManiaMonitor(QtGui.QMainWindow):
 
     from ._hit_offset_graph import HitOffsetGraph
-    from ._rel_offset_graph import ReleaseOffsetGraph
-    from ._note_interval_graph import NoteIntervalGraph
     from ._hit_distr_graph import HitDistrGraph
-    from ._hit_offset_interval_graph import HitOffsetIntervalGraph
     from ._plays_graph import PlaysGraph
-    from ._predicted_hit_offset_graph import PredictedHitOffsetGraph
+    from ._note_offset_graph import NoteOffsetGraph
+    from ._note_distr_graph import NoteDistrGraph
+    from ._map_display import MapDisplay
 
     def __init__(self, osu_path):
         QtGui.QMainWindow.__init__(self)
@@ -40,20 +31,15 @@ class ManiaMonitor(QtGui.QMainWindow):
 
         self.data_cache = None
 
-        ManiaMonitor.NoteIntervalGraph.__init__(self, pos='top')
-        ManiaMonitor.HitDistrGraph.__init__(self, pos='left')
-        ManiaMonitor.ReleaseOffsetGraph.__init__(self, pos='bottom', relative_to='HitDistrGraph')
-        ManiaMonitor.HitOffsetGraph.__init__(self, pos='below', relative_to='ReleaseOffsetGraph')
-        ManiaMonitor.PredictedHitOffsetGraph.__init__(self, pos='below', relative_to='HitOffsetGraph')
-        ManiaMonitor.HitOffsetIntervalGraph.__init__(self, pos='bottom', relative_to='NoteIntervalGraph')
         ManiaMonitor.PlaysGraph.__init__(self, pos='bottom')
-
-        ManiaMonitor.PlaysGraph.region_changed_event.connect(
-            lambda event_data: ManiaMonitor.HitOffsetIntervalGraph._plot_data(self, self.data_cache, event_data)
-        )
-
-        ManiaMonitor.HitOffsetIntervalGraph.model_updated_event.connect(
-            lambda event_data: ManiaMonitor.PredictedHitOffsetGraph._plot_data(self, self.data_cache, event_data)
+        ManiaMonitor.NoteOffsetGraph.__init__(self, pos='top')
+        ManiaMonitor.HitDistrGraph.__init__(self, pos='top')
+        ManiaMonitor.HitOffsetGraph.__init__(self, pos='right', relative_to='HitDistrGraph')
+        ManiaMonitor.NoteDistrGraph.__init__(self, pos='right', relative_to='NoteDistrGraph')
+        ManiaMonitor.MapDisplay.__init__(self, pos='right', relative_to='NoteDistrGraph')
+        
+        ManiaMonitor.NoteOffsetGraph.region_changed_event.connect(
+            lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
         )
 
 
@@ -65,11 +51,10 @@ class ManiaMonitor(QtGui.QMainWindow):
         except AttributeError: pass
 
         ManiaMonitor.HitOffsetGraph._plot_data(self, data)
-        ManiaMonitor.ReleaseOffsetGraph._plot_data(self, data)
-        ManiaMonitor.NoteIntervalGraph._plot_data(self, data)
         ManiaMonitor.HitDistrGraph._plot_data(self, data)
-        ManiaMonitor.HitOffsetIntervalGraph._plot_data(self, data)
         ManiaMonitor.PlaysGraph._plot_data(self, data)
+        ManiaMonitor.NoteOffsetGraph._plot_data(self, data)
+        ManiaMonitor.MapDisplay._plot_data(self, data)
 
 
     def _create_graph(self, graph_id=None, dock_name=' ', pos='bottom', relative_to=None, widget=None, plot=None):
