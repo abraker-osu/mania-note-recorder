@@ -12,10 +12,13 @@ from ._callback import callback
 np.set_printoptions(suppress=True)
 
 
-class NoteOffsetGraph():
+class NoteOffsetProcGraph():
 
     @callback
     class region_changed_event(): pass
+
+    @callback
+    class calc_done_event(): pass
 
     def __init__(self, pos, relative_to=None):
 
@@ -24,7 +27,7 @@ class NoteOffsetGraph():
             graph_id    = self.__id,
             pos         = pos,
             relative_to = relative_to,
-            widget      = pyqtgraph.PlotWidget(title='Note offsets'),
+            widget      = pyqtgraph.PlotWidget(title='Note offsets (2σ)'),
         )
 
         # hit_offsets graph
@@ -37,12 +40,15 @@ class NoteOffsetGraph():
         self.graphs[self.__id]['widget'].addLine(x=None, y=0, pen=pyqtgraph.mkPen((0, 150, 0, 255), width=1))
 
         self.__region_plot = pyqtgraph.LinearRegionItem([0, 10], 'vertical', swapMode='block', pen='r')
-        self.__region_plot.sigRegionChangeFinished.connect(lambda: NoteOffsetGraph.__region_changed(self))
+        self.__region_plot.sigRegionChangeFinished.connect(lambda: NoteOffsetProcGraph.__region_changed(self))
         self.graphs[self.__id]['widget'].addItem(self.__region_plot)
+
+        self.__error_bar_graph = pyqtgraph.ErrorBarItem(beam=0.5)
+        self.graphs[self.__id]['widget'].addItem(self.__error_bar_graph)
 
 
     def _plot_data(self, data):
-        NoteOffsetGraph.__plot_hit_offsets(self, data)
+        NoteOffsetProcGraph.__plot_hit_offsets(self, data)
 
 
     def __plot_hit_offsets(self, data):
@@ -57,22 +63,41 @@ class NoteOffsetGraph():
         plays = np.unique(data[:, Data.TIMESTAMP])
         hit_offsets = data[:, Data.OFFSETS]
 
-        print(f'Num plays: {plays.shape[0]}')
+
+        num_notes1 = int(hit_offsets.shape[0]/plays.shape[0])
+        num_notes2 = hit_offsets[data[:, Data.TIMESTAMP] == max(data[:, Data.TIMESTAMP])].shape
+        num_notes3 = hit_offsets[data[:, Data.TIMESTAMP] == min(data[:, Data.TIMESTAMP])].shape
+        print(num_notes1, num_notes2, num_notes3)
+
 
         note_idxs = np.arange(int(hit_offsets.shape[0]/plays.shape[0]))
-        note_idxs = np.tile(note_idxs, plays.shape[0])
+        num = np.tile(note_idxs, plays.shape[0])
 
-        hit_offsets = hit_offsets[data_filter]
-        note_idxs = note_idxs[data_filter]
+        means = np.zeros(note_idxs.shape[0])
+        stddevs = np.zeros(note_idxs.shape[0])
+
+        for x in note_idxs:
+            offsets = hit_offsets[(num == x) & data_filter]
+            if offsets.shape[0] == 0:
+                continue
+
+            means[x] = np.mean(offsets)
+            stddevs[x] = np.std(offsets)
 
         # Calculate view
-        xMin = 0
-        xMax = np.max(note_idxs)
+        xMin = -1
+        xMax = np.max(num) + 1
+        yMax = np.max(means+3*stddevs)
+        yMin = np.min(means-3*stddevs)
 
         # Set plot data
-        self.graphs[self.__id]['plot'].setData(note_idxs, hit_offsets, pen=None, symbol='o', symbolSize=2, symbolPen=None, symbolBrush=(100,100,255,150))
-        self.graphs[self.__id]['widget'].setLimits(xMin=xMin, xMax=xMax)
+        self.graphs[self.__id]['plot'].setData(note_idxs, means, pen=None, symbol='o', symbolSize=5, symbolPen=(255,255,255,150), symbolBrush=(0,0,255,150))
+        self.__error_bar_graph.setData(x=note_idxs, y=means, top=2*stddevs, bottom=2*stddevs)
+
+        self.graphs[self.__id]['widget'].setLimits(xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax)
+
+        NoteOffsetProcGraph.calc_done_event.emit((means, 2*stddevs, note_idxs))
 
 
     def __region_changed(self):
-        NoteOffsetGraph.region_changed_event.emit(self.__region_plot.getRegion())
+        NoteOffsetProcGraph.region_changed_event.emit(self.__region_plot.getRegion())

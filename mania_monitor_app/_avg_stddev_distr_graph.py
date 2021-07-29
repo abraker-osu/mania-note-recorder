@@ -1,0 +1,50 @@
+from numpy.core.fromnumeric import std
+import pyqtgraph
+
+from PyQt5.QtGui import *
+import numpy as np
+
+from ._utils import Utils
+
+
+
+class AvgStddevDistrGraph():
+
+    def __init__(self, pos, relative_to=None):
+
+        self.__id = __class__.__name__
+        self._create_graph(
+            graph_id    = self.__id,
+            pos         = pos,
+            relative_to = relative_to,
+            widget      = pyqtgraph.PlotWidget(title='Avg Stddev*2 Distribution'),
+        )
+
+        self.graphs[self.__id]['widget'].getPlotItem().getAxis('left').enableAutoSIPrefix(False)
+        self.graphs[self.__id]['widget'].getPlotItem().getAxis('bottom').enableAutoSIPrefix(False)
+        self.graphs[self.__id]['widget'].setLabel('left', 'Freq', units='#', unitPrefix='')
+        self.graphs[self.__id]['widget'].setLabel('bottom', 'Stddev*2', units='ms', unitPrefix='')
+        #self.graphs[self.__id]['widget'].setLimits(xMin=-200, yMin=-1, xMax=200)
+
+        self.__min_err_line = pyqtgraph.InfiniteLine(angle=90, pen=pyqtgraph.mkPen((255, 100, 0, 150), width=1))
+        self.graphs[self.__id]['widget'].addItem(self.__min_err_line)
+
+
+    def _plot_data(self, data):
+        AvgStddevDistrGraph.__plot_stddevs(self, data)
+
+
+    def __plot_stddevs(self, data):
+        means, stddevs = data
+        stddevs = stddevs[stddevs != 0]  # These are invalid
+
+        if len(stddevs) == 0:
+            return
+        
+        # Get a histogram for stddevs
+        step = (150 - 0)/(0.1*stddevs.shape[0])
+        y, x = np.histogram(stddevs, bins=np.linspace(0, 150, int(0.1*stddevs.shape[0])))
+        self.graphs[self.__id]['plot'].setData(x, y, stepMode="center", fillLevel=0, fillOutline=True, brush=(0,0,255,150))
+
+        self.__min_err_line.setValue(x[:-1][y == np.max(y)][0] + step/2)
+        print(f'Peak: {x[:-1][y == np.max(y)][0] + step/2} ms')

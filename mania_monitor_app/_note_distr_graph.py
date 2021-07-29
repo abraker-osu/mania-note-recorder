@@ -99,11 +99,11 @@ class NoteDistrGraph():
 
         mean_offset = np.mean(hit_offsets)
         std_offset  = np.std(hit_offsets)
-
+        
         # Set plot data
         self.__distr_avg_line.setValue(mean_offset)
-        self.__distr_std_line_pos.setValue(std_offset*2 + mean_offset)
-        self.__distr_std_line_neg.setValue(-std_offset*2 + mean_offset)
+        self.__distr_std_line_pos.setValue(mean_offset + std_offset*2)
+        self.__distr_std_line_neg.setValue(mean_offset - std_offset*2)
 
         # Special case if standard deviation is point-like
         # Then there is no model to display

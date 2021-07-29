@@ -1,21 +1,31 @@
 import pyqtgraph
-from pyqtgraph import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui
 
 
-class MissPlotItem(pyqtgraph.GraphicsObject):
+class NumPlotItem(pyqtgraph.GraphicsObject):
 
     def __init__(self):
         pyqtgraph.GraphicsObject.__init__(self)
     
-        self._data = None
+        self._x = None
+        self._y = None
+        self._num = None
+
         self._picture = QtGui.QPicture()
 
         self._px_h = self.pixelHeight()
         self._px_w = self.pixelWidth()
-        
 
-    def setData(self, data):
-        self._data = data
+        #self.f = QFont()
+        #self.f.setPointSize(48)
+
+
+
+    def setData(self, x, y, num):
+        self._x = x
+        self._y = y
+        self._num = num
+
         self._cached_bounding = None
 
         self._px_h = self.pixelHeight()
@@ -25,7 +35,9 @@ class MissPlotItem(pyqtgraph.GraphicsObject):
 
 
     def generatePicture(self):
-        if type(self._data) == type(None):
+        if type(self._x) == type(None) or \
+           type(self._y) == type(None) or \
+           type(self._num) == type(None):
             return
 
         ## pre-computing a QPicture object allows paint() to run much more quickly, 
@@ -33,11 +45,14 @@ class MissPlotItem(pyqtgraph.GraphicsObject):
         self._picture = QtGui.QPicture()
 
         painter = QtGui.QPainter(self._picture)
-        painter.setPen(pyqtgraph.mkPen(color=(255, 0, 0, 50), width=1))
+        #painter.setPen(pyqtgraph.mkPen(color=(255, 0, 0, 50), width=1))
 
-        vr = self.viewRect()
-        for timing in self._data:
-            painter.drawLine(QtCore.QPointF(float(timing), vr.bottom()), QtCore.QPointF(float(timing), vr.top()))
+        font = painter.font()
+        font.setPixelSize(48)
+        painter.setFont(font)
+
+        for x, y, num in zip(self._x, self._y, self._num):
+            painter.drawText(x, y, str(num))
 
         painter.end()
     
@@ -47,17 +62,17 @@ class MissPlotItem(pyqtgraph.GraphicsObject):
     
 
     def boundingRect(self):
-        if type(self._data) == type(None):
+        if type(self._x) == type(None) or type(self._y) == type(None):
             return QtCore.QRectF()
 
-        if len(self._data) == 0:
+        if len(self._x) == 0 or len(self._y) == 0:
             return QtCore.QRectF()
 
         if type(self._cached_bounding) == type(None):
             # boundingRect _must_ indicate the entire area that will be drawn on
             # or else we will get artifacts and possibly crashing.
             # (in this case, QPicture does all the work of computing the bouning rect for us)
-            self._cached_bounding = QtCore.QRectF(0, -200, max(self._data), 200)
+            self._cached_bounding = QtCore.QRectF(min(self._x), max(self._x) - min(self._x), min(self._y), max(self._x) - min(self._x))
 
         return self._cached_bounding
 

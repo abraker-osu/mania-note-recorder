@@ -12,8 +12,10 @@ class ManiaMonitor(QtGui.QMainWindow):
     from ._hit_distr_graph import HitDistrGraph
     from ._plays_graph import PlaysGraph
     from ._note_offset_graph import NoteOffsetGraph
+    from ._note_offset_proc_graph import NoteOffsetProcGraph
     from ._note_distr_graph import NoteDistrGraph
     from ._map_display import MapDisplay
+    from ._avg_stddev_distr_graph import AvgStddevDistrGraph
 
     def __init__(self, osu_path):
         QtGui.QMainWindow.__init__(self)
@@ -33,13 +35,27 @@ class ManiaMonitor(QtGui.QMainWindow):
 
         ManiaMonitor.PlaysGraph.__init__(self, pos='bottom')
         ManiaMonitor.NoteOffsetGraph.__init__(self, pos='top')
+        ManiaMonitor.NoteOffsetProcGraph.__init__(self, pos='below', relative_to='NoteOffsetGraph')
         ManiaMonitor.HitDistrGraph.__init__(self, pos='top')
-        ManiaMonitor.HitOffsetGraph.__init__(self, pos='right', relative_to='HitDistrGraph')
+        ManiaMonitor.HitOffsetGraph.__init__(self, pos='below', relative_to='HitDistrGraph')
         ManiaMonitor.NoteDistrGraph.__init__(self, pos='right', relative_to='NoteDistrGraph')
-        ManiaMonitor.MapDisplay.__init__(self, pos='right', relative_to='NoteDistrGraph')
+        ManiaMonitor.AvgStddevDistrGraph.__init__(self, pos='below', relative_to='NoteDistrGraph')
+        ManiaMonitor.MapDisplay.__init__(self, pos='right', relative_to='AvgStddevDistrGraph')
         
         ManiaMonitor.NoteOffsetGraph.region_changed_event.connect(
             lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
+        )
+
+        ManiaMonitor.NoteOffsetProcGraph.region_changed_event.connect(
+            lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
+        )
+
+        ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
+            lambda event_data: ManiaMonitor.AvgStddevDistrGraph._plot_data(self, event_data)
+        )
+
+        ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
+            lambda event_data: ManiaMonitor.MapDisplay._plot_stddevs(self, event_data)
         )
 
 
@@ -50,11 +66,12 @@ class ManiaMonitor(QtGui.QMainWindow):
         try: self.setWindowTitle(title)
         except AttributeError: pass
 
+        ManiaMonitor.MapDisplay._plot_data(self, data)
         ManiaMonitor.HitOffsetGraph._plot_data(self, data)
         ManiaMonitor.HitDistrGraph._plot_data(self, data)
-        ManiaMonitor.PlaysGraph._plot_data(self, data)
         ManiaMonitor.NoteOffsetGraph._plot_data(self, data)
-        ManiaMonitor.MapDisplay._plot_data(self, data)
+        ManiaMonitor.NoteOffsetProcGraph._plot_data(self, data)
+        ManiaMonitor.PlaysGraph._plot_data(self, data)
 
 
     def _create_graph(self, graph_id=None, dock_name=' ', pos='bottom', relative_to=None, widget=None, plot=None):
