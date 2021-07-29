@@ -96,7 +96,7 @@ class NoteOffsetProcGraph():
 
         self.graphs[self.__id]['widget'].setLimits(xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax)
 
-        NoteOffsetProcGraph.calc_done_event.emit((means, 2*stddevs, note_idxs))
+        NoteOffsetProcGraph.calc_done_event.emit((means, 2*stddevs))
 
 
     def __region_changed(self):
