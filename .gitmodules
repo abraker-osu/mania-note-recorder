@@ -1,6 +1,6 @@
 [submodule "osu_analysis"]
 	path = osu_analysis
-	url = git@github.com:abraker-osu/osu_analysis.git
+	url = https://github.com/abraker-osu/osu_analysis.git
 [submodule "osu_interfaces"]
 	path = osu_interfaces
-	url = git@github.com:abraker-osu/osu_interfaces.git
+	url = https://github.com/abraker-osu/osu_interfaces.git
