@@ -116,12 +116,14 @@ class Recorder(QtCore.QObject):
         if replay.mods.has_mod('DT') or replay.mods.has_mod('NC'):
             map_data.index /= 1.5
             replay_data.index /= 1.5
-            return
 
         if replay.mods.has_mod('HT'):
             map_data.index *= 1.5
             replay_data.index *= 1.5
-            return
+
+        if replay.mods.has_mod('MR'):
+            num_keys = ManiaActionData.num_keys(map_data)
+            map_data[:, ManiaActionData.IDX_COL] = (num_keys - 1) - map_data[:, ManiaActionData.IDX_COL]
 
 
     def __check_maps_db(self):
