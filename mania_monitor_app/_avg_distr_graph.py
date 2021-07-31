@@ -24,7 +24,7 @@ class AvgDistrGraph():
         self.graphs[self.__id]['widget'].getPlotItem().getAxis('bottom').enableAutoSIPrefix(False)
         self.graphs[self.__id]['widget'].setLabel('left', 'Freq', units='#', unitPrefix='')
         self.graphs[self.__id]['widget'].setLabel('bottom', 'Mean', units='ms', unitPrefix='')
-        self.graphs[self.__id]['widget'].setLimits(xMin=-200, yMin=-200, xMax=200)
+        self.graphs[self.__id]['widget'].setLimits(xMin=-200, yMin=-1, xMax=200)
 
         self.__min_err_line = pyqtgraph.InfiniteLine(angle=90, pen=pyqtgraph.mkPen((255, 100, 0, 150), width=1))
         self.graphs[self.__id]['widget'].addItem(self.__min_err_line)

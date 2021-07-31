@@ -57,12 +57,12 @@ class NoteOffsetGraph():
         num_notes_total = data.shape[0]
         num_notes = int(num_notes_total/plays.shape[0])
 
-        print(f'Num plays: {plays.shape[0]}     num notes: {num_notes_total/plays.shape[0]}   total (data): {num_notes_total}   total (calc): {num_notes*plays.shape[0]}')
+        print(f'Num plays: {plays.shape[0]}     num notes: {num_notes_total/plays.shape[0]}   total: {num_notes_total}')
 
         num_notes1 = int(data.shape[0]/plays.shape[0])
         num_notes2 = data[data[:, Data.TIMESTAMP] == max(data[:, Data.TIMESTAMP])].shape[0]
         num_notes3 = data[data[:, Data.TIMESTAMP] == min(data[:, Data.TIMESTAMP])].shape[0]
-        print(num_notes1, num_notes2, num_notes3)
+        #print(num_notes1, num_notes2, num_notes3)
 
         # Build note indexing data
         note_idxs = np.arange(num_notes)
