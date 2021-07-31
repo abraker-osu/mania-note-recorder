@@ -10,7 +10,7 @@ This is a tool made to record multiple scores on the same map. After playing a m
 
 2. You will need python, at least version 3.8. You can download it here: https://www.python.org/downloads/. THERE IS A STEP THAT ASKS WHETHER TO ADD TO PATH. MAKE SURE TO CHECK THAT.
 
-3. Once git is installed, create a folder where the tool will reside in
+3. Once git is installed, create a folder somewhere where the tool will reside in (desktop or documents, doesn't matter)
 
 4. In the newly created folder, in the address bar enter in "cmd". A command prompt window should pop up.
 
