@@ -15,7 +15,8 @@ class ManiaMonitor(QtGui.QMainWindow):
     from ._note_offset_proc_graph import NoteOffsetProcGraph
     from ._note_distr_graph import NoteDistrGraph
     from ._map_display import MapDisplay
-    from ._avg_stddev_distr_graph import AvgStddevDistrGraph
+    from ._stddev_distr_graph import StddevDistrGraph
+    from ._avg_distr_graph import AvgDistrGraph
 
     def __init__(self, osu_path):
         QtGui.QMainWindow.__init__(self)
@@ -39,7 +40,8 @@ class ManiaMonitor(QtGui.QMainWindow):
         ManiaMonitor.HitDistrGraph.__init__(self, pos='top')
         ManiaMonitor.HitOffsetGraph.__init__(self, pos='below', relative_to='HitDistrGraph')
         ManiaMonitor.NoteDistrGraph.__init__(self, pos='right', relative_to='NoteDistrGraph')
-        ManiaMonitor.AvgStddevDistrGraph.__init__(self, pos='below', relative_to='NoteDistrGraph')
+        ManiaMonitor.AvgDistrGraph.__init__(self, pos='below', relative_to='NoteDistrGraph')
+        ManiaMonitor.StddevDistrGraph.__init__(self, pos='below', relative_to='AvgDistrGraph')
         ManiaMonitor.MapDisplay.__init__(self, pos='right', relative_to='AvgStddevDistrGraph')
         
         ManiaMonitor.NoteOffsetGraph.region_changed_event.connect(
@@ -51,7 +53,11 @@ class ManiaMonitor(QtGui.QMainWindow):
         )
 
         ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
-            lambda event_data: ManiaMonitor.AvgStddevDistrGraph._plot_data(self, event_data)
+            lambda event_data: ManiaMonitor.StddevDistrGraph._plot_data(self, event_data)
+        )
+
+        ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
+            lambda event_data: ManiaMonitor.AvgDistrGraph._plot_data(self, event_data)
         )
 
         ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(

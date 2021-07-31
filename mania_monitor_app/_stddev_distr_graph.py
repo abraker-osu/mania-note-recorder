@@ -8,7 +8,7 @@ from ._utils import Utils
 
 
 
-class AvgStddevDistrGraph():
+class StddevDistrGraph():
 
     def __init__(self, pos, relative_to=None):
 
@@ -17,7 +17,7 @@ class AvgStddevDistrGraph():
             graph_id    = self.__id,
             pos         = pos,
             relative_to = relative_to,
-            widget      = pyqtgraph.PlotWidget(title='Avg Stddev*2 Distribution'),
+            widget      = pyqtgraph.PlotWidget(title='Stddev*2 Distribution'),
         )
 
         self.graphs[self.__id]['widget'].getPlotItem().getAxis('left').enableAutoSIPrefix(False)
@@ -31,7 +31,7 @@ class AvgStddevDistrGraph():
 
 
     def _plot_data(self, data):
-        AvgStddevDistrGraph.__plot_stddevs(self, data)
+        StddevDistrGraph.__plot_stddevs(self, data)
 
 
     def __plot_stddevs(self, data):
