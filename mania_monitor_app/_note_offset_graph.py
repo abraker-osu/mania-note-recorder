@@ -46,24 +46,33 @@ class NoteOffsetGraph():
 
 
     def __plot_hit_offsets(self, data):
-        # Determine what was the latest play
-        data_filter = \
-            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP)
+        # Gets hit presses and misses throuhout all plays
+        score_filter = \
+            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP) | \
+            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_MISSP)
+        data = data[score_filter]
 
-        empty_filter = (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_EMPTY)
-        data = data[empty_filter]
-
-        # Extract timings and hit_offsets
+        # Determine the number of plays there are, and number of notes in each play
         plays = np.unique(data[:, Data.TIMESTAMP])
-        hit_offsets = data[:, Data.OFFSETS]
+        num_notes_total = data.shape[0]
+        num_notes = int(num_notes_total/plays.shape[0])
 
-        print(f'Num plays: {plays.shape[0]}')
+        print(f'Num plays: {plays.shape[0]}     num notes: {num_notes_total/plays.shape[0]}   total (data): {num_notes_total}   total (calc): {num_notes*plays.shape[0]}')
 
-        note_idxs = np.arange(int(hit_offsets.shape[0]/plays.shape[0]))
+        num_notes1 = int(data.shape[0]/plays.shape[0])
+        num_notes2 = data[data[:, Data.TIMESTAMP] == max(data[:, Data.TIMESTAMP])].shape[0]
+        num_notes3 = data[data[:, Data.TIMESTAMP] == min(data[:, Data.TIMESTAMP])].shape[0]
+        print(num_notes1, num_notes2, num_notes3)
+
+        # Build note indexing data
+        note_idxs = np.arange(num_notes)
         note_idxs = np.tile(note_idxs, plays.shape[0])
 
-        hit_offsets = hit_offsets[data_filter]
-        note_idxs = note_idxs[data_filter]
+        miss_filter = \
+            (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_MISSP)
+
+        hit_offsets = data[miss_filter, Data.OFFSETS]
+        note_idxs = note_idxs[miss_filter]
 
         # Calculate view
         xMin = 0

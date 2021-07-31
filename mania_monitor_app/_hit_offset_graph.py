@@ -81,7 +81,7 @@ class HitOffsetGraph():
         # Determine what was the latest play
         data_filter = \
             (data[:, Data.TIMESTAMP] == max(data[:, Data.TIMESTAMP])) & \
-            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_MISS)
+            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_MISSP)
         data = data[data_filter]
 
         # Extract data and plot
