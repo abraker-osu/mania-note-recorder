@@ -12,7 +12,7 @@ This is a tool made to record multiple scores on the same map. After playing a m
 
 3. Once git is installed, create a folder somewhere where the tool will reside in (desktop or documents, doesn't matter)
 
-4. In the newly created folder, in the address bar enter in "cmd". A command prompt window should pop up.
+4. In windows explorer, go to the newly created folder. Then in the address bar enter in "cmd". A command prompt window should pop up.
 
 5. Run the following command. This will download the project:
 ```
