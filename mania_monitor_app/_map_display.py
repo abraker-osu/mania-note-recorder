@@ -46,8 +46,8 @@ class MapDisplay():
         # Determine what was the latest play
         data_filter = \
             (data[:, Data.TIMESTAMP] == min(data[:, Data.TIMESTAMP])) & \
-            (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_EMPTY) & \
-            (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_HITR)
+            ((data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP) | \
+             (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_MISSP))
 
         data = data[data_filter]
 
