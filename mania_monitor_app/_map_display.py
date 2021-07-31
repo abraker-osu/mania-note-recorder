@@ -46,12 +46,13 @@ class MapDisplay():
         # Determine what was the latest play
         data_filter = \
             (data[:, Data.TIMESTAMP] == min(data[:, Data.TIMESTAMP])) & \
-            (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_EMPTY)
+            (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_EMPTY) & \
+            (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_HITR)
 
         data = data[data_filter]
 
         # Extract timings and hit_offsets
-        self.__note_column = data[:, Data.KEYS]
+        self.__note_column  = data[:, Data.KEYS]
         self.__note_timings = data[:, Data.TIMINGS] - data[:, Data.OFFSETS]
 
         # Calculate view
@@ -89,5 +90,4 @@ class MapDisplay():
             return
 
         means, stddevs = data
-        print(means.shape, stddevs.shape, self.__note_column.shape, self.__note_timings.shape)
         self.__error_bar_graph.setData(x=self.__note_column, y=self.__note_timings + means, top=2*stddevs, bottom=2*stddevs, pen=(200, 200, 200, 100))

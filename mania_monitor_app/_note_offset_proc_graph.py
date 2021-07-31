@@ -52,23 +52,18 @@ class NoteOffsetProcGraph():
 
 
     def __plot_hit_offsets(self, data):
+        # Filter out empty hits and releases
+        score_filter = (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_EMPTY) & \
+                       (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_HITR)
+        data = data[score_filter]
+
         # Determine what was the latest play
         data_filter = \
             (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP)
 
-        empty_filter = (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_EMPTY)
-        data = data[empty_filter]
-
         # Extract timings and hit_offsets
         plays = np.unique(data[:, Data.TIMESTAMP])
         hit_offsets = data[:, Data.OFFSETS]
-
-
-        num_notes1 = int(hit_offsets.shape[0]/plays.shape[0])
-        num_notes2 = hit_offsets[data[:, Data.TIMESTAMP] == max(data[:, Data.TIMESTAMP])].shape
-        num_notes3 = hit_offsets[data[:, Data.TIMESTAMP] == min(data[:, Data.TIMESTAMP])].shape
-        print(num_notes1, num_notes2, num_notes3)
-
 
         note_idxs = np.arange(int(hit_offsets.shape[0]/plays.shape[0]))
         num = np.tile(note_idxs, plays.shape[0])
@@ -81,7 +76,7 @@ class NoteOffsetProcGraph():
             if offsets.shape[0] == 0:
                 continue
 
-            means[x] = np.mean(offsets)
+            means[x]   = np.mean(offsets)
             stddevs[x] = np.std(offsets)
 
         # Calculate view
