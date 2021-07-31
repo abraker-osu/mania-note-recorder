@@ -114,12 +114,14 @@ class Recorder(QtCore.QObject):
 
     def __process_mods(self, map_data, replay_data, replay):
         if replay.mods.has_mod('DT') or replay.mods.has_mod('NC'):
-            map_data.index /= 1.5
-            replay_data.index /= 1.5
+            map_data[:, ManiaActionData.IDX_STIME] /= 1.5
+            map_data[:, ManiaActionData.IDX_ETIME] /= 1.5
+            replay_data[:, ManiaActionData.IDX_STIME] /= 1.5
 
         if replay.mods.has_mod('HT'):
-            map_data.index *= 1.5
-            replay_data.index *= 1.5
+            map_data[:, ManiaActionData.IDX_STIME] *= 1.5
+            map_data[:, ManiaActionData.IDX_ETIME] *= 1.5
+            replay_data[:, ManiaActionData.IDX_STIME] *= 1.5
 
         if replay.mods.has_mod('MR'):
             num_keys = ManiaActionData.num_keys(map_data)
