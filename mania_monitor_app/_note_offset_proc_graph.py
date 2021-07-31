@@ -52,14 +52,10 @@ class NoteOffsetProcGraph():
 
 
     def __plot_hit_offsets(self, data):
-        # Filter out empty hits and releases
-        score_filter = (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_EMPTY) & \
-                       (data[:, Data.HIT_TYPE] != ManiaScoreData.TYPE_HITR)
+        # Filter out everything but press releated scorings
+        score_filter = (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP) | \
+                       (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_MISSP)
         data = data[score_filter]
-
-        # Determine what was the latest play
-        data_filter = \
-            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP)
 
         # Extract timings and hit_offsets
         plays = np.unique(data[:, Data.TIMESTAMP])
@@ -71,8 +67,11 @@ class NoteOffsetProcGraph():
         means = np.zeros(note_idxs.shape[0])
         stddevs = np.zeros(note_idxs.shape[0])
 
+        miss_filter = \
+            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP)
+
         for x in note_idxs:
-            offsets = hit_offsets[(num == x) & data_filter]
+            offsets = hit_offsets[(num == x) & miss_filter]
             if offsets.shape[0] == 0:
                 continue
 
