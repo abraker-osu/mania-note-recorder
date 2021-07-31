@@ -47,4 +47,4 @@ class StddevDistrGraph():
         self.graphs[self.__id]['plot'].setData(x, y, stepMode="center", fillLevel=0, fillOutline=True, brush=(0,0,255,150))
 
         self.__min_err_line.setValue(x[:-1][y == np.max(y)][0] + step/2)
-        print(f'Peak: {x[:-1][y == np.max(y)][0] + step/2} ms')
+        print(f'Std peak: {x[:-1][y == np.max(y)][0] + step/2} ms')
