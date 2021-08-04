@@ -64,7 +64,7 @@ class Recorder(QtCore.QObject):
             self.data = np.load(self.data_file, allow_pickle=False)
 
         if len(self.data) != 0:
-            self.__new_replay_event.emit((self.data, ''))
+            self.__new_replay_event.emit((self.maps_table, self.data, None))
 
         self.monitor = Monitor(osu_path)
         self.monitor.create_replay_monitor('Replay Grapher', self.__handle_new_replay)
@@ -113,7 +113,7 @@ class Recorder(QtCore.QObject):
         #miss_note_intervals, miss_timings = self.__get_miss_data(beatmap.difficulty.cs, map_data, score_data)
         self.__save_data(data)
 
-        self.__new_replay_event.emit((self.data, beatmap.metadata.name + ' ' + replay.get_name()))
+        self.__new_replay_event.emit((self.maps_table, self.data, beatmap.metadata.name + ' ' + replay.get_name()))
 
 
     def __process_mods(self, map_data, replay_data, replay):

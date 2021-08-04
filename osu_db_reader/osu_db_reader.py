@@ -94,6 +94,7 @@ class OsuDbReader():
 
                 data.append({ 
                     'md5'  : md5_hash,
+                    'id'   : beatmap_id,
                     'path' : f'{folder_name}/{map_file}' 
                 })
                 print(data[-1])
