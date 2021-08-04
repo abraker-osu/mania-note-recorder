@@ -20,11 +20,15 @@ class Data():
     OFFSETS   = 3
     HIT_TYPE  = 4
     KEYS      = 5
-    COL1      = 6
-    COL2      = 7
-    COL3      = 8
-    COL4      = 9
-    NUM_COLS  = 10
+    #COL1      = 6
+    #COL2      = 7
+    #COL3      = 8
+    #COL4      = 9
+    #COL5      = 10
+    #COL6      = 11
+    #COL7      = 12
+    #NUM_COLS  = 13
+    NUM_COLS  = 6
 
 
 class Recorder(QtCore.QObject):
@@ -200,9 +204,9 @@ class Recorder(QtCore.QObject):
         path = f'{self.osu_path}/Songs'
         beatmap = BeatmapIO.open_beatmap(f'{self.osu_path}/Songs/{maps[0]["path"]}')
 
-        if beatmap.difficulty.cs != 4:
-            print('Only 4k maps supported for now')
-            return
+        #if beatmap.difficulty.cs != 4:
+        #    print('Only 4k maps supported for now')
+        #    return
 
         return replay, beatmap
 
@@ -233,6 +237,7 @@ class Recorder(QtCore.QObject):
             id_dat    = np.full_like(offsets, beatmap_id)
             timestamp = np.full_like(offsets, current_time)            
 
+            '''
             for col in range(int(num_keys)):
                 # Get note times where needed to press for other column
                 score_oth_col = score_data.loc[col]
@@ -250,9 +255,11 @@ class Recorder(QtCore.QObject):
 
                 # Save note interval data reference to column
                 note_intervals[col] = intervals
-
+            '''
+            
             # Append data entries for column
-            data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat, np.asarray(note_intervals).T ])
+            #data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat, np.asarray(note_intervals).T ])
+            data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat ])
 
         # Concate data accross all columns
         return np.concatenate(data)
