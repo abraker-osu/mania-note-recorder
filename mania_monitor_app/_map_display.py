@@ -66,23 +66,6 @@ class MapDisplay():
         self.graphs[self.__id]['plot'].setData(self.__note_column, self.__note_timings, pen=None, symbol=symbol, symbolPen=None, symbolSize=20, symbolBrush=(100, 100, 255, 200))
         self.graphs[self.__id]['widget'].setXRange(max(self.__note_column)*(0.5 - 1.5), max(self.__note_column)*(0.5 + 1.5))
 
-        def create_text(i):
-            f = QFont()
-            f.setPointSize(48)
-            symbol = QtGui.QPainterPath()
-            symbol.addText(0, 0, f, str(i))
-            br = symbol.boundingRect()
-            scale = min(1. / br.width(), 1. / br.height())
-   
-            tr = QTransform()
-            tr.scale(scale, scale)
-            tr.translate(-br.x() - br.width() / 2., -br.y() - br.height() / 2.)
-            
-            return tr.map(symbol)
-
-        symbols = [ create_text(i) for i in range(len(self.__note_timings)) ]
-        #self.__note_num_plot.setData(self.__note_column, self.__note_timings, pen=None, symbol=symbols, symbolPen=None, symbolSize=20, symbolBrush=(200, 200, 200, 200))
-
 
     def _plot_stddevs(self, data):
         if type(self.__note_column) == type(None) or \
@@ -90,4 +73,5 @@ class MapDisplay():
             return
 
         means, stddevs = data
+        #print(means.shape, stddevs.shape, self.__note_column.shape, self.__note_timings.shape)
         self.__error_bar_graph.setData(x=self.__note_column, y=self.__note_timings + means, top=2*stddevs, bottom=2*stddevs, pen=(200, 200, 200, 100))
