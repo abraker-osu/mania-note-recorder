@@ -10,5 +10,7 @@ from mania_monitor_app import ManiaMonitor
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setStyleSheet(open('stylesheet.css').read())
+
     ex  = ManiaMonitor('C:/Games/osu!')
     sys.exit(app.exec_())
