@@ -50,7 +50,6 @@ class ManiaMonitor(QtGui.QMainWindow):
 
         self.map_list.itemClicked.connect(self.__map_list_click_event)
 
-        ManiaMonitor.PlaysGraph.__init__(self, pos='bottom')
         ManiaMonitor.NoteOffsetGraph.__init__(self, pos='top')
         ManiaMonitor.NoteOffsetProcGraph.__init__(self, pos='below', relative_to='NoteOffsetGraph')
         ManiaMonitor.HitDistrGraph.__init__(self, pos='top')
@@ -59,6 +58,7 @@ class ManiaMonitor(QtGui.QMainWindow):
         ManiaMonitor.AvgDistrGraph.__init__(self, pos='below', relative_to='NoteDistrGraph')
         ManiaMonitor.StddevDistrGraph.__init__(self, pos='below', relative_to='AvgDistrGraph')
         ManiaMonitor.MapDisplay.__init__(self, pos='right', relative_to='AvgStddevDistrGraph')
+        ManiaMonitor.PlaysGraph.__init__(self, pos='bottom')
         
         ManiaMonitor.NoteOffsetGraph.region_changed_event.connect(
             lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
