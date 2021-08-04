@@ -43,7 +43,7 @@ class AvgDistrGraph():
         
         # Get a histogram for stddevs
         step = (150 - 0)/(0.1*means.shape[0])
-        y, x = np.histogram(means, bins=np.linspace(-150, 150, int(0.1*means.shape[0])))
+        y, x = np.histogram(means, bins=np.linspace(-150, 150, int(0.15*means.shape[0])))
         self.graphs[self.__id]['plot'].setData(x, y, stepMode="center", fillLevel=0, fillOutline=True, brush=(0,0,255,150))
 
         self.__min_err_line.setValue(x[:-1][y == np.max(y)][0] + step/2)
