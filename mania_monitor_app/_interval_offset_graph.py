@@ -23,7 +23,7 @@ class IntervalOffsetGraph():
         # hit_offsets graph
         self.graphs[self.__id]['widget'].getPlotItem().getAxis('left').enableAutoSIPrefix(False)
         self.graphs[self.__id]['widget'].getPlotItem().getAxis('bottom').enableAutoSIPrefix(False)
-        self.graphs[self.__id]['widget'].setLabel('left', 'Offset', units='ms', unitPrefix='')
+        self.graphs[self.__id]['widget'].setLabel('left', 'Delta hit timing', units='ms', unitPrefix='')
         self.graphs[self.__id]['widget'].setLabel('bottom', 'Interval', units='ms', unitPrefix='')
         self.graphs[self.__id]['widget'].setLimits(xMin=-1, xMax=1100, yMin=-200, yMax=200)
 
