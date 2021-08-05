@@ -64,13 +64,13 @@ class NoteIntervalGraph():
             column_filter = data[:, Data.KEYS] == column
 
             note_intervals = np.diff(note_timings[column_filter])
-            hit_timings    = data[column_filter, Data.OFFSETS]
+            hit_timings_d  = np.diff(data[column_filter, Data.TIMINGS])
             hit_types      = data[column_filter, Data.HIT_TYPE]
 
             # Set the block of data
             interval_data[offset : note_intervals.shape[0] + offset, 0] = note_intervals
             interval_data[offset : note_intervals.shape[0] + offset, 1] = column
-            interval_data[offset : note_intervals.shape[0] + offset, 2] = hit_timings[1:]
+            interval_data[offset : note_intervals.shape[0] + offset, 2] = hit_timings_d
             interval_data[offset : note_intervals.shape[0] + offset, 3] = hit_types[1:]
 
             # Set offset to the the start of next data block
