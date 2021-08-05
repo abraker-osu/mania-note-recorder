@@ -22,6 +22,8 @@ class ManiaMonitor(QtGui.QMainWindow):
     from ._map_display import MapDisplay
     from ._stddev_distr_graph import StddevDistrGraph
     from ._avg_distr_graph import AvgDistrGraph
+    from ._note_interval_graph import NoteIntervalGraph
+    from ._interval_offset_graph import IntervalOffsetGraph
 
     def __init__(self, osu_path):
         QtGui.QMainWindow.__init__(self)
@@ -57,7 +59,9 @@ class ManiaMonitor(QtGui.QMainWindow):
         ManiaMonitor.NoteDistrGraph.__init__(self, pos='right', relative_to='NoteDistrGraph')
         ManiaMonitor.AvgDistrGraph.__init__(self, pos='below', relative_to='NoteDistrGraph')
         ManiaMonitor.StddevDistrGraph.__init__(self, pos='below', relative_to='AvgDistrGraph')
-        ManiaMonitor.MapDisplay.__init__(self, pos='right', relative_to='AvgStddevDistrGraph')
+        ManiaMonitor.IntervalOffsetGraph.__init__(self, pos='below', relative_to='StddevDistrGraph')
+        ManiaMonitor.NoteIntervalGraph.__init__(self, pos='right', relative_to='AvgStddevDistrGraph')
+        ManiaMonitor.MapDisplay.__init__(self, pos='below', relative_to='NoteIntervalGraph')
         ManiaMonitor.PlaysGraph.__init__(self, pos='bottom')
         
         ManiaMonitor.NoteOffsetGraph.region_changed_event.connect(
@@ -80,6 +84,10 @@ class ManiaMonitor(QtGui.QMainWindow):
             lambda event_data: ManiaMonitor.MapDisplay._plot_stddevs(self, event_data)
         )
 
+        ManiaMonitor.NoteIntervalGraph.calc_done_event.connect(
+            lambda event_data: ManiaMonitor.IntervalOffsetGraph._plot_data(self, event_data)
+        )
+
 
     def __handle_new_replay_qt(self, args):
         maps_table, data, title = args
@@ -100,6 +108,7 @@ class ManiaMonitor(QtGui.QMainWindow):
         ManiaMonitor.NoteOffsetGraph._plot_data(self, data)
         ManiaMonitor.NoteOffsetProcGraph._plot_data(self, data)
         ManiaMonitor.PlaysGraph._plot_data(self, data)
+        ManiaMonitor.NoteIntervalGraph._plot_data(self, data)
 
 
     def _create_graph(self, graph_id=None, dock_name=' ', pos='bottom', relative_to=None, widget=None, plot=None):
