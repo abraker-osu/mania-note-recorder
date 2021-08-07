@@ -48,7 +48,7 @@ class ManiaMonitor(QtGui.QMainWindow):
 
         self.data_cache = None
         self.map_list_data = []
-        self.selected_map_id = None
+        self.selected_map_hash = None
 
         self.map_list.itemClicked.connect(self.__map_list_click_event)
 
@@ -100,7 +100,9 @@ class ManiaMonitor(QtGui.QMainWindow):
         if maps_table != None:
             self.__check_new_maps(maps_table, data)
 
-        data = data[data[:, Data.MAP_ID] == self.selected_map_id]
+        # Select data
+        tmp = data.astype(np.uint64)
+        data = data[(tmp[:, Data.HASH] + tmp[:, Data.MODS]) == int(self.selected_map_hash, 16)]
 
         ManiaMonitor.MapDisplay._plot_data(self, data)
         ManiaMonitor.HitOffsetGraph._plot_data(self, data)
@@ -138,23 +140,43 @@ class ManiaMonitor(QtGui.QMainWindow):
 
 
     def __check_new_maps(self, maps_table, data):
-        unique_map_ids = np.unique(data[:, Data.MAP_ID])
-        new_map_ids = np.setdiff1d(unique_map_ids, self.map_list_data)
+        vhex = np.vectorize(lambda x: hex(x)[2:])
+        data = data.astype(np.uint64)
 
-        for new_map_id in new_map_ids:
-            maps = maps_table.search(tinydb.where('id') == new_map_id)
+        # Determine new play data
+        unique_map_hahes = np.unique(data[:, Data.HASH] + data[:, Data.MODS])
+        new_map_hashes   = np.setdiff1d(vhex(unique_map_hahes), self.map_list_data)
+
+        # Go through unlisted maps
+        for new_map_hash in new_map_hashes:
+            # Decode hash
+            map_hash = new_map_hash[:-4]
+            map_mods = new_map_hash[-4:]
+
+            print(map_mods)
+
+            # Find the map the hash is related to in db
+            maps = maps_table.search(tinydb.where('md5h') == map_hash)
             if len(maps) == 0:
                 continue
 
-            self.map_list.addItem(maps[0]['path'].split('/')[-1])
-            self.map_list_data.append(new_map_id)
+            # Resolve mod
+            mods = ''
+            if int(map_mods, 16) & (1 << 0): mods += 'DT'
+            if int(map_mods, 16) & (1 << 1): mods += 'HT'
+            mods = f' +{mods}' if len(mods) != 0 else ''
 
-        if self.selected_map_id == None:
-            self.selected_map_id = self.map_list_data[0]
+            # Add map to list
+            self.map_list.addItem(maps[0]['path'].split('/')[-1] + mods)
+            self.map_list_data.append(new_map_hash)
+
+        if self.selected_map_hash == None:
+            self.selected_map_hash = new_map_hash
 
 
     def __map_list_click_event(self, item):
-        selected_map_id = self.map_list_data[self.map_list.row(item)]
-        if self.selected_map_id != selected_map_id:
-            self.selected_map_id = selected_map_id
+        selected_map_hash = self.map_list_data[self.map_list.row(item)]
+
+        if self.selected_map_hash != selected_map_hash:
+            self.selected_map_hash = selected_map_hash
             self.__handle_new_replay_qt((None, self.recorder.data, None))

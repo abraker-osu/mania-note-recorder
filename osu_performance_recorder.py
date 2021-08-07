@@ -20,22 +20,16 @@ class Data():
     OFFSETS   = 3
     HIT_TYPE  = 4
     KEYS      = 5
-    #COL1      = 6
-    #COL2      = 7
-    #COL3      = 8
-    #COL4      = 9
-    #COL5      = 10
-    #COL6      = 11
-    #COL7      = 12
-    #NUM_COLS  = 13
-    NUM_COLS  = 6
+    HASH      = 6
+    MODS      = 7
+    NUM_COLS  = 8
 
 
 class Recorder(QtCore.QObject):
 
     __new_replay_event = QtCore.pyqtSignal(tuple)
 
-    SAVE_FILE = 'data/osu_performance_recording_v1.npy'
+    SAVE_FILE = 'data/osu_performance_recording_v2.npy'
 
     def __init__(self, osu_path, callback):
         QtCore.QObject.__init__(self)
@@ -99,37 +93,36 @@ class Recorder(QtCore.QObject):
     
         #print('New replay detected!')
 
-        try: replay, beatmap = self.__get_files(replay_path)
+        try: replay, beatmap, hash = self.__get_files(replay_path)
         except TypeError: return
 
         map_data = ManiaActionData.get_action_data(beatmap)
         replay_data = ManiaActionData.get_action_data(replay)
-        self.__process_mods(map_data, replay_data, replay)
+        mods = self.__process_mods(map_data, replay_data, replay)
 
         score_data = ManiaScoreData.get_score_data(map_data, replay_data)
 
         # Get data
-        data = self.__get_data(beatmap.difficulty.cs, map_data, score_data, beatmap.metadata.beatmap_id)
-        #miss_note_intervals, miss_timings = self.__get_miss_data(beatmap.difficulty.cs, map_data, score_data)
+        data = self.__get_data(hash, mods, beatmap.difficulty.cs, map_data, score_data, beatmap.metadata.beatmap_id)
         self.__save_data(data)
 
         self.__new_replay_event.emit((self.maps_table, self.data, beatmap.metadata.name + ' ' + replay.get_name()))
 
 
     def __process_mods(self, map_data, replay_data, replay):
+        mods = 0
+
         if replay.mods.has_mod('DT') or replay.mods.has_mod('NC'):
-            map_data[:, ManiaActionData.IDX_STIME] /= 1.5
-            map_data[:, ManiaActionData.IDX_ETIME] /= 1.5
-            replay_data[:, ManiaActionData.IDX_STIME] /= 1.5
+            mods |= (1 << 0)
 
         if replay.mods.has_mod('HT'):
-            map_data[:, ManiaActionData.IDX_STIME] *= 1.5
-            map_data[:, ManiaActionData.IDX_ETIME] *= 1.5
-            replay_data[:, ManiaActionData.IDX_STIME] *= 1.5
+            mods |= (1 << 1)
 
         if replay.mods.has_mod('MR'):
             num_keys = ManiaActionData.num_keys(map_data)
             map_data[:, ManiaActionData.IDX_COL] = (num_keys - 1) - map_data[:, ManiaActionData.IDX_COL]
+
+        return mods
 
 
     def __check_maps_db(self):
@@ -177,8 +170,6 @@ class Recorder(QtCore.QObject):
 
 
     def __get_files(self, replay_path):
-        #print('Loading replay...')
-
         try: replay = ReplayIO.open_replay(replay_path)
         except Exception as e:
             print(f'Error opening replay: {e}')
@@ -187,12 +178,6 @@ class Recorder(QtCore.QObject):
         if replay.game_mode != Gamemode.MANIA:
             print('Only mania gamemode supported for now')            
             return
-
-        #print(replay.mods)
-
-        #if replay.mods.has_mod('DT') or replay.mods.has_mod('NC'):
-        #    print('DT and NC is not supported yet!')
-        #    return
 
         print('Determining beatmap...')
 
@@ -204,15 +189,11 @@ class Recorder(QtCore.QObject):
         path = f'{self.osu_path}/Songs'
         beatmap = BeatmapIO.open_beatmap(f'{self.osu_path}/Songs/{maps[0]["path"]}')
 
-        #if beatmap.difficulty.cs != 4:
-        #    print('Only 4k maps supported for now')
-        #    return
-
-        return replay, beatmap
+        return replay, beatmap, maps[0]["md5"]
 
 
     #@jit(nopython=True, parellel=True)
-    def __get_data(self, num_keys, map_data, score_data, beatmap_id):
+    def __get_data(self, md5, mods, num_keys, map_data, score_data, beatmap_id):
         '''
             [ offset, timing, n1, n2, n3, ...  ],
             [ offset, timing, n1, n2, n3, ... ],
@@ -221,21 +202,29 @@ class Recorder(QtCore.QObject):
         note_intervals = [ [] for i in range(int(num_keys)) ]
         data = []
         current_time = time.time()
+        hash_mask = 0xFFFFFFFFFFFF0000
 
         for ref_col in range(int(num_keys)):
             # Get scoring data for the current column
             score_ref_col = score_data.loc[ref_col]
-            ref_col_times = score_ref_col['map_t']
 
             # Get replay hitoffsets and timings for those offsets
             offsets = (score_ref_col['replay_t'] - score_ref_col['map_t']).values
-            timings = score_ref_col['replay_t'].values
             htypes  = score_ref_col['type'].values
 
+            if mods & (1 << 0):    # DT
+                timings = score_ref_col['replay_t'].values / 1.5
+            elif mods & (1 << 1):  # HT
+                timings = score_ref_col['replay_t'].values * 1.5
+            else:                  # NM
+                timings = score_ref_col['replay_t'].values
+
             # Additional metadata
-            col_dat   = np.full_like(offsets, ref_col)
-            id_dat    = np.full_like(offsets, beatmap_id)
-            timestamp = np.full_like(offsets, current_time)            
+            col_dat    = np.full_like(offsets, ref_col)
+            id_dat     = np.full_like(offsets, beatmap_id)
+            timestamp  = np.full_like(offsets, current_time)
+            hash       = np.full_like(offsets, int(md5, 16) & hash_mask)
+            mod_data   = np.full_like(offsets, mods)
 
             '''
             for col in range(int(num_keys)):
@@ -258,8 +247,7 @@ class Recorder(QtCore.QObject):
             '''
             
             # Append data entries for column
-            #data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat, np.asarray(note_intervals).T ])
-            data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat ])
+            data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat, hash, mod_data ])
 
         # Concate data accross all columns
         return np.concatenate(data)

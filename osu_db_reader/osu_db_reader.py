@@ -93,8 +93,8 @@ class OsuDbReader():
                 scroll_speed = ReadBuffer.read_ubyte(db)
 
                 data.append({ 
-                    'md5'  : md5_hash,
-                    'id'   : beatmap_id,
+                    'md5'   : md5_hash,
+                    'md5h'  : md5_hash[-16:-4],
                     'path' : f'{folder_name}/{map_file}' 
                 })
                 print(data[-1])
