@@ -214,8 +214,10 @@ class Recorder(QtCore.QObject):
 
             if mods & (1 << 0):    # DT
                 timings = score_ref_col['replay_t'].values / 1.5
+                offsets = offsets*2/3
             elif mods & (1 << 1):  # HT
                 timings = score_ref_col['replay_t'].values * 1.5
+                offsets = offsets*3/2
             else:                  # NM
                 timings = score_ref_col['replay_t'].values
 
