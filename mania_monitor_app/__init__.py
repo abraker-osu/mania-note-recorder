@@ -29,6 +29,8 @@ class ManiaMonitor(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
 
         self.__init_gui()
+        self.score_db = tinydb.TinyDB('data/scores.json')
+        self.nps_table = self.score_db.table('nps')
 
         self.recorder = Recorder(osu_path, self.__handle_new_replay_qt)
         self.show()
@@ -36,6 +38,16 @@ class ManiaMonitor(QtGui.QMainWindow):
 
     def __init_gui(self):
         self.graphs = {}
+
+        self.nps_action = QtGui.QAction("&Top nps", self)
+        self.nps_action.triggered.connect(lambda: self.__update_top_nps(show=True))
+
+        self.view_menu = QtGui.QMenu("&View", self)
+        self.view_menu.addAction(self.nps_action)
+
+        self.menu_bar = QtGui.QMenuBar(self)
+        self.menu_bar.addMenu(self.view_menu)       
+
         self.main_widget = QtGui.QWidget()
         self.main_layout = QHBoxLayout()
         self.map_list = QtGui.QListWidget()
@@ -45,6 +57,10 @@ class ManiaMonitor(QtGui.QMainWindow):
         self.splitter.addWidget(self.map_list)
         self.splitter.addWidget(self.area)
         self.setCentralWidget(self.splitter)
+
+        self.setMenuBar(self.menu_bar)
+
+        self.score_list = QtGui.QListWidget()
 
         self.data_cache = None
         self.map_list_data = []
@@ -86,6 +102,10 @@ class ManiaMonitor(QtGui.QMainWindow):
 
         ManiaMonitor.NoteIntervalGraph.calc_done_event.connect(
             lambda event_data: ManiaMonitor.IntervalOffsetGraph._plot_data(self, event_data)
+        )
+
+        ManiaMonitor.IntervalOffsetGraph.calc_done_event.connect(
+            lambda event_data: self.__record_nps(event_data)
         )
 
 
@@ -180,3 +200,42 @@ class ManiaMonitor(QtGui.QMainWindow):
         if self.selected_map_hash != selected_map_hash:
             self.selected_map_hash = selected_map_hash
             self.__handle_new_replay_qt((None, self.recorder.data, None))
+        
+            self.__update_top_nps()
+
+
+    def __record_nps(self, nps_data):
+        is_definite, nps = nps_data
+        interval = 1000/nps
+
+        if is_definite:
+            print(f'Min average player tapping rate: {nps:.2f} nps ({interval:.2f} ms)')
+        else:
+            print(f'Min average player tapping rate: > {nps:.2f} nps (< {interval:.2f} ms)')
+
+        play_hash = int(self.selected_map_hash, 16)
+        data = self.nps_table.search(tinydb.where('hash') == play_hash)
+        if len(data) == 0:
+            self.nps_table.upsert({ 'nps' : nps, 'hash' : play_hash }, tinydb.where('hash') == play_hash)
+            return
+
+        old_nps = data[0]['nps']
+        if old_nps < nps:
+            self.nps_table.upsert({ 'nps' : nps }, tinydb.where('hash') == play_hash)
+
+        self.__update_top_nps()
+
+
+    def __update_top_nps(self, show=False):
+        data = self.nps_table.search(tinydb.where('nps').exists())
+
+        nps = np.asarray([ round(entry['nps'], 2) for entry in data ])
+        nps = np.sort(nps)[::-1]
+
+        self.score_list.clear()
+        for score in nps:
+            self.score_list.addItem(f'{score} nps')
+
+        if show:
+            self.score_list.show()
+        

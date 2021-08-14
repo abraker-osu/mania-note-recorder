@@ -6,12 +6,15 @@ import numpy as np
 
 from osu_analysis import ManiaScoreData
 
+from ._callback import callback
 
 
 class IntervalOffsetGraph():
 
-    def __init__(self, pos, relative_to=None):
+    @callback
+    class calc_done_event(): pass
 
+    def __init__(self, pos, relative_to=None):
         self.__id = __class__.__name__
         self._create_graph(
             graph_id    = self.__id,
@@ -102,9 +105,6 @@ class IntervalOffsetGraph():
         best_idx = np.argmin(tapping_intervals)
         tapping_interval = tapping_intervals[best_idx]
 
-        if means[best_idx] <= 16:
-            print(f'Min average player tapping rate: > {1000/tapping_interval:.2f} nps (< {tapping_interval:.2f} ms)')
-        else:
-            print(f'Min average player tapping rate: {1000/tapping_interval:.2f} nps ({tapping_interval:.2f} ms)')
+        IntervalOffsetGraph.calc_done_event.emit((means[best_idx] <= 16, 1000/tapping_interval))
 
         
