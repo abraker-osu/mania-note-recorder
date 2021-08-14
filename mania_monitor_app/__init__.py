@@ -156,6 +156,8 @@ class ManiaMonitor(QtGui.QMainWindow):
             # Find the map the hash is related to in db
             maps = maps_table.search(tinydb.where('md5h') == map_hash)
             if len(maps) == 0:
+                self.map_list.addItem(new_map_hash)
+                self.map_list_data.append(new_map_hash)
                 continue
 
             # Resolve mod
