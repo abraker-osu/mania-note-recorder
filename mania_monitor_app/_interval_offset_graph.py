@@ -46,8 +46,8 @@ class IntervalOffsetGraph():
 
 
     def __plot_model(self, interval_data):
-        #miss_filter = interval_data[:, 3] == ManiaScoreData.TYPE_HITP
-        #interval_data = interval_data[miss_filter]
+        miss_filter = interval_data[:, 3] == ManiaScoreData.TYPE_HITP
+        interval_data = interval_data[miss_filter]
 
         # Get list of existing intervals and filter out ones that are more than 1 second
         unique_intervals = np.unique(interval_data[:, 0])
