@@ -39,25 +39,25 @@ class IntervalOffsetGraph():
 
 
     def __plot_graph(self, interval_data):
-        miss_filter = interval_data[:, 3] == ManiaScoreData.TYPE_HITP
-        interval_data = interval_data[miss_filter]
+        #miss_filter = interval_data[:, 3] == ManiaScoreData.TYPE_HITP
+        #interval_data = interval_data[miss_filter]
 
         self.graphs[self.__id]['plot'].setData(interval_data[:, 0], interval_data[:, 2] - interval_data[:, 0], pen=None, symbol='o', symbolPen=None, symbolSize=2, symbolBrush=(100, 100, 255, 200))
 
 
     def __plot_model(self, interval_data):
-        miss_filter = interval_data[:, 3] == ManiaScoreData.TYPE_HITP
-        interval_data = interval_data[miss_filter]
+        #miss_filter = interval_data[:, 3] == ManiaScoreData.TYPE_HITP
+        #interval_data = interval_data[miss_filter]
 
         # Get list of existing intervals and filter out ones that are more than 1 second
-        intervals = np.unique(interval_data[:, 0])
-        intervals = intervals[intervals <= 1000]
+        unique_intervals = np.unique(interval_data[:, 0])
+        intervals = unique_intervals[unique_intervals <= 1000]
 
-        _means     = []
-        _stddevs   = []
-        _intervals = []
+        means     = []
+        stddevs   = []
+        intervals = []
 
-        for interval in intervals:
+        for interval in unique_intervals:
             # Select all data point close to current interval
             data_select = (np.abs(interval_data[:, 0] - interval) <= 1)
             hittimings_d = interval_data[data_select, 2] - interval
@@ -73,16 +73,16 @@ class IntervalOffsetGraph():
                 continue
 
             # Record processed data
-            _means.append(np.mean(hittimings_d))
-            _stddevs.append(2*np.std(hittimings_d))
-            _intervals.append(interval)
+            means.append(np.mean(hittimings_d))
+            stddevs.append(2*np.std(hittimings_d))
+            intervals.append(interval)
 
-        _means     = np.asarray(_means)
-        _stddevs   = np.asarray(_stddevs)
-        _intervals = np.asarray(_intervals)
+        means     = np.asarray(means)
+        stddevs   = np.asarray(stddevs)
+        intervals = np.asarray(intervals)
 
-        self.__error_bar_graph.setData(x=_intervals, y=_means, top=2*_stddevs, bottom=2*_stddevs, pen=mkPen((200, 200, 200, 50)))
-        self.__model_plot.setData(_intervals, _means, pen=mkPen((200, 200, 0, 150)))
+        self.__error_bar_graph.setData(x=intervals, y=means, top=2*stddevs, bottom=2*stddevs, pen=mkPen((200, 200, 200, 50)))
+        self.__model_plot.setData(intervals, means, pen=mkPen((200, 200, 0, 150)))
 
         # Since the difference between note interval and player's tapping interval is
         # how much the player is slow by, we can determine the player's tapping speed.
@@ -91,27 +91,20 @@ class IntervalOffsetGraph():
         # 
         # For example, note interval is 100 ms and player tapped 20 ms late on average. This means
         # player's tapping interval is 120 ms.
-        if _means.shape[0] < 1:
+        if means.shape[0] < 1:
             return
 
-        means_filter = _means > 16
+        tapping_intervals = np.asarray([ (interval + mean + 2*stddev) for interval, mean, stddev in zip(intervals, means, stddevs) ])
+        if tapping_intervals.shape[0] == 0:
+            print('Unsufficient data to determine tapping rate')
+            return
 
-        # If there are no data points to average/stddev on
-        if (~means_filter).all():
-            min_idx = np.argmin(_intervals)
-            
-            interval = _intervals[min_idx]
-            mean     = _means[min_idx]
-            stddev   = _stddevs[min_idx]
+        best_idx = np.argmin(tapping_intervals)
+        tapping_interval = tapping_intervals[best_idx]
 
-            tapping_interval = interval + mean + 2*stddev
+        if means[best_idx] <= 16:
             print(f'Min average player tapping rate: > {1000/tapping_interval:.2f} nps (< {tapping_interval:.2f} ms)')
         else:
-            _intervals = _intervals[means_filter]
-            _means     = _means[means_filter]
-            _stddevs   = _stddevs[means_filter]
-
-            tapping_interval = np.mean(_intervals + _means + 2*_stddevs)
             print(f'Min average player tapping rate: {1000/tapping_interval:.2f} nps ({tapping_interval:.2f} ms)')
 
         
