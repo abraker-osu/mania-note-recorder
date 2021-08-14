@@ -91,9 +91,9 @@ class IntervalOffsetGraph():
         # 
         # For example, note interval is 100 ms and player tapped 20 ms late on average. This means
         # player's tapping interval is 120 ms.
-        if _means.shape[0] < 3:
+        if _means.shape[0] < 1:
             return
-            
+
         means_filter = _means > 16
 
         # If there are no data points to average/stddev on
