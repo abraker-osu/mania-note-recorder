@@ -1,3 +1,4 @@
+from PyQt5.QtCore import QModelIndex
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QHBoxLayout
 
@@ -66,7 +67,7 @@ class ManiaMonitor(QtGui.QMainWindow):
         self.map_list_data = []
         self.selected_map_hash = None
 
-        self.map_list.itemClicked.connect(self.__map_list_click_event)
+        self.map_list.currentRowChanged.connect(self.__map_list_click_event)
 
         ManiaMonitor.NoteOffsetGraph.__init__(self, pos='top')
         ManiaMonitor.NoteOffsetProcGraph.__init__(self, pos='below', relative_to='NoteOffsetGraph')
@@ -118,7 +119,10 @@ class ManiaMonitor(QtGui.QMainWindow):
             except AttributeError: pass
 
         if maps_table != None:
-            self.__check_new_maps(maps_table, data)
+            is_new_maps = self.__check_new_maps(maps_table, data)
+
+            if is_new_maps:
+                self.map_list.setCurrentRow(len(self.map_list_data) - 1)
 
         # Select data
         tmp = data.astype(np.uint64)
@@ -160,6 +164,7 @@ class ManiaMonitor(QtGui.QMainWindow):
 
 
     def __check_new_maps(self, maps_table, data):
+        is_new_maps = False
         vhex = np.vectorize(lambda x: hex(x)[2:])
         data = data.astype(np.uint64)
 
@@ -178,6 +183,7 @@ class ManiaMonitor(QtGui.QMainWindow):
             if len(maps) == 0:
                 self.map_list.addItem(new_map_hash)
                 self.map_list_data.append(new_map_hash)
+                is_new_maps = True
                 continue
 
             # Resolve mod
@@ -189,13 +195,16 @@ class ManiaMonitor(QtGui.QMainWindow):
             # Add map to list
             self.map_list.addItem(maps[0]['path'].split('/')[-1] + mods)
             self.map_list_data.append(new_map_hash)
+            is_new_maps = True
 
         if self.selected_map_hash == None:
             self.selected_map_hash = new_map_hash
 
+        return is_new_maps
 
-    def __map_list_click_event(self, item):
-        selected_map_hash = self.map_list_data[self.map_list.row(item)]
+
+    def __map_list_click_event(self, idx):
+        selected_map_hash = self.map_list_data[idx]
 
         if self.selected_map_hash != selected_map_hash:
             self.selected_map_hash = selected_map_hash
@@ -215,6 +224,7 @@ class ManiaMonitor(QtGui.QMainWindow):
 
         play_hash = int(self.selected_map_hash, 16)
         data = self.nps_table.search(tinydb.where('hash') == play_hash)
+
         if len(data) == 0:
             self.nps_table.upsert({ 'nps' : nps, 'hash' : play_hash }, tinydb.where('hash') == play_hash)
             return
@@ -227,15 +237,28 @@ class ManiaMonitor(QtGui.QMainWindow):
 
 
     def __update_top_nps(self, show=False):
+        # Get nps data from db
         data = self.nps_table.search(tinydb.where('nps').exists())
 
         nps = np.asarray([ round(entry['nps'], 2) for entry in data ])
-        nps = np.sort(nps)[::-1]
+        hashes = list([ entry['hash'] for entry in data ])
 
+        # Figure out how to sort the nps
+        idx_sort = np.argsort(nps)[::-1]
+
+        # Add the sorted nps to qlist widget
         self.score_list.clear()
-        for score in nps:
+        for score in nps[idx_sort]:
             self.score_list.addItem(f'{score} nps')
 
+        # Resolve current hash's sorted index
+        play_hash = int(self.selected_map_hash, 16)
+        hash_idx = np.where(idx_sort == hashes.index(play_hash))[0][0]
+        
+        # Highlight the corresponding value in the list    
+        self.score_list.setCurrentRow(hash_idx)
+
+        # Show window
         if show:
             self.score_list.show()
         
