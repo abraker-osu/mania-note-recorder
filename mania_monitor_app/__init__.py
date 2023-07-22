@@ -1,18 +1,19 @@
-from PyQt5.QtCore import QModelIndex
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import QHBoxLayout
-
-import pyqtgraph
-from pyqtgraph.Qt import QtCore, QtGui
+import os
 
 import numpy as np
 import tinydb
+import json
+
+from PyQt5 import QtWidgets
+
+import pyqtgraph
+from pyqtgraph import dockarea
 
 from osu_performance_recorder import Recorder, Data
+from app_cfg import AppConfig
 
 
-
-class ManiaMonitor(QtGui.QMainWindow):
+class ManiaMonitor(QtWidgets.QMainWindow):
 
     from ._hit_offset_graph import HitOffsetGraph
     from ._hit_distr_graph import HitDistrGraph
@@ -27,33 +28,59 @@ class ManiaMonitor(QtGui.QMainWindow):
     from ._interval_offset_graph import IntervalOffsetGraph
 
     def __init__(self, osu_path):
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
+
+        if not os.path.isdir(AppConfig.cfg['osu_dir']):
+            msg = QtWidgets.QMessageBox()
+            msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
+            msg.setWindowTitle('osu! folder config')
+            msg.setText('Locate your osu! folder')
+            msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+            msg.exec_()
+
+            osu_dir = str(QtWidgets.QFileDialog.getExistingDirectory(self, 'Select osu! folder'))
+            if len(osu_dir) == 0:
+                msg = QtWidgets.QMessageBox()
+                msg.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+                msg.setWindowTitle('osu! folder config')
+                msg.setText(
+                    'Invalid osu! path! Alternatively find config.json in app folder and edit it.\n'
+                    'Then restart the app.\n'
+                    'Make sure to use double backslashes for osu! path (ex: "C:\\\\Games\\\\osu!")\n'
+                )
+                msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+                msg.exec_()
+                return
+
+            AppConfig.cfg['osu_dir'] = osu_dir
+            with open('config.json', 'w') as f:
+                json.dump(AppConfig.cfg, f, indent=4)
 
         self.__init_gui()
         self.score_db = tinydb.TinyDB('data/scores.json')
         self.nps_table = self.score_db.table('nps')
 
-        self.recorder = Recorder(osu_path, self.__handle_new_replay_qt)
+        self.recorder = Recorder(AppConfig.cfg['osu_dir'], self.__handle_new_replay_qt)
         self.show()
 
 
     def __init_gui(self):
         self.graphs = {}
 
-        self.nps_action = QtGui.QAction("&Top nps", self)
+        self.nps_action = QtWidgets.QAction("&Top nps", self)
         self.nps_action.triggered.connect(lambda: self.__update_top_nps(show=True))
 
-        self.view_menu = QtGui.QMenu("&View", self)
+        self.view_menu = QtWidgets.QMenu("&View", self)
         self.view_menu.addAction(self.nps_action)
 
-        self.menu_bar = QtGui.QMenuBar(self)
-        self.menu_bar.addMenu(self.view_menu)       
+        self.menu_bar = QtWidgets.QMenuBar(self)
+        self.menu_bar.addMenu(self.view_menu)
 
-        self.main_widget = QtGui.QWidget()
-        self.main_layout = QHBoxLayout()
-        self.map_list = QtGui.QListWidget()
-        self.splitter = QtGui.QSplitter()
-        self.area = pyqtgraph.dockarea.DockArea()
+        self.main_widget = QtWidgets.QWidget()
+        self.main_layout = QtWidgets.QHBoxLayout()
+        self.map_list = QtWidgets.QListWidget()
+        self.splitter = QtWidgets.QSplitter()
+        self.area = dockarea.DockArea()
 
         self.splitter.addWidget(self.map_list)
         self.splitter.addWidget(self.area)
@@ -61,7 +88,7 @@ class ManiaMonitor(QtGui.QMainWindow):
 
         self.setMenuBar(self.menu_bar)
 
-        self.score_list = QtGui.QListWidget()
+        self.score_list = QtWidgets.QListWidget()
 
         self.data_cache = None
         self.map_list_data = []
@@ -80,7 +107,7 @@ class ManiaMonitor(QtGui.QMainWindow):
         ManiaMonitor.NoteIntervalGraph.__init__(self, pos='right', relative_to='AvgStddevDistrGraph')
         ManiaMonitor.MapDisplay.__init__(self, pos='below', relative_to='NoteIntervalGraph')
         ManiaMonitor.PlaysGraph.__init__(self, pos='bottom')
-        
+
         ManiaMonitor.NoteOffsetGraph.region_changed_event.connect(
             lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
         )
@@ -140,13 +167,13 @@ class ManiaMonitor(QtGui.QMainWindow):
     def _create_graph(self, graph_id=None, dock_name=' ', pos='bottom', relative_to=None, widget=None, plot=None):
         if type(widget) == type(None):
             widget = pyqtgraph.PlotWidget()
-        
+
         try: widget.getViewBox().enableAutoRange()
         except AttributeError: pass
-        
-        dock = pyqtgraph.dockarea.Dock(dock_name, size=(500,400))
+
+        dock = dockarea.Dock(dock_name, size=(500,400))
         dock.addWidget(widget)
-        
+
         try: relative_dock = self.graphs[relative_to]['dock']
         except KeyError:
             relative_dock = None
@@ -209,7 +236,7 @@ class ManiaMonitor(QtGui.QMainWindow):
         if self.selected_map_hash != selected_map_hash:
             self.selected_map_hash = selected_map_hash
             self.__handle_new_replay_qt((None, self.recorder.data, None))
-        
+
             self.__update_top_nps()
 
 
@@ -254,11 +281,10 @@ class ManiaMonitor(QtGui.QMainWindow):
         # Resolve current hash's sorted index
         play_hash = int(self.selected_map_hash, 16)
         hash_idx = np.where(idx_sort == hashes.index(play_hash))[0][0]
-        
-        # Highlight the corresponding value in the list    
+
+        # Highlight the corresponding value in the list
         self.score_list.setCurrentRow(hash_idx)
 
         # Show window
         if show:
             self.score_list.show()
-        

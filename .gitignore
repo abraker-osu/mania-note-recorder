@@ -3,3 +3,4 @@
 *.pyc
 /api_key.py
 /data/*
+/config.json
