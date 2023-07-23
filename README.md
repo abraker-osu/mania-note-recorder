@@ -4,6 +4,8 @@
 
 This is a tool made to record multiple scores on the same map. After playing a map multiple times, it shows the average hit timing for each note. Graphs/displays can be moved around using left click drag, and zoomed in/out using right click drag
 
+![image](https://github.com/abraker-osu/mania-note-recorder/assets/4358724/75439695-c25a-4f63-864a-2cbeb215498b)
+
 ### How to set this up (guide for complete noobs):
 
 1. You will need git. You can download it here: https://git-scm.com/
