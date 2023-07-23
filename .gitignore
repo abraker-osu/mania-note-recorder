@@ -4,3 +4,5 @@
 /api_key.py
 /data/*
 /config.json
+/build/*
+/dist/*

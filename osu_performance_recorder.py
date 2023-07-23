@@ -1,21 +1,23 @@
 import os
-import sys
 import time
 import tinydb
+import datetime
 
 from PyQt5 import QtCore
+from PyQt5 import QtWidgets
+
 import numpy as np
 
 from osu_analysis import ManiaActionData, ManiaScoreData
-from osu_analysis import BeatmapIO, ReplayIO, Gamemode
+from osu_analysis import Replay, BeatmapIO, ReplayIO, Gamemode
 from osu_db_reader.osu_db_reader import OsuDbReader
 from monitor import Monitor
 
 
 
-class Data():    
+class Data():
     MAP_ID    = 0
-    TIMESTAMP = 1 
+    TIMESTAMP = 1
     TIMINGS   = 2
     OFFSETS   = 3
     HIT_TYPE  = 4
@@ -29,7 +31,7 @@ class Recorder(QtCore.QObject):
 
     __new_replay_event = QtCore.pyqtSignal(tuple)
 
-    SAVE_FILE = 'data/osu_performance_recording_v2.npy'
+    SAVE_FILE = 'data/recording_v2_{date}.npy'
 
     def __init__(self, osu_path, callback):
         QtCore.QObject.__init__(self)
@@ -42,23 +44,11 @@ class Recorder(QtCore.QObject):
         self.maps_table = self.db.table('maps')
         self.meta_table = self.db.table('meta')
 
+        self.data_file = None
+        self.data      = None
+
         self.osu_path = osu_path
         self.__check_maps_db()
-
-        try: 
-            self.data_file = open(Recorder.SAVE_FILE, 'rb+')
-            self.data = np.load(self.data_file, allow_pickle=False)
-        except FileNotFoundError:
-            print('Data file not found. Creating...')
-
-            self.data = np.asarray([])
-            np.save(Recorder.SAVE_FILE, np.empty((0, Data.NUM_COLS)), allow_pickle=False)
-            
-            self.data_file = open(Recorder.SAVE_FILE, 'rb+')
-            self.data = np.load(self.data_file, allow_pickle=False)
-
-        if len(self.data) != 0:
-            self.__new_replay_event.emit((self.maps_table, self.data, None))
 
         self.monitor = Monitor(osu_path)
         self.monitor.create_replay_monitor('Replay Grapher', self.__handle_new_replay)
@@ -68,16 +58,47 @@ class Recorder(QtCore.QObject):
         self.data_file.close()
 
 
+    def new_file(self):
+        if not isinstance(self.data_file, type(None)):
+            self.data_file.close()
+
+        date = datetime.datetime.now()
+        file_pathname = Recorder.SAVE_FILE.format(date=f'{date.year}_{date.month}_{date.day}_{date.hour}_{date.minute}_{date.second}')
+
+        self.data = np.asarray([])
+        np.save(file_pathname, np.empty((0, Data.NUM_COLS)), allow_pickle=False)
+
+        self.data_file = open(file_pathname, 'rb+')
+        self.data = np.load(self.data_file, allow_pickle=False)
+
+        if len(self.data) != 0:
+            self.__new_replay_event.emit((self.maps_table, self.data, None))
+
+
+    def open_file(self, file: str):
+        if not isinstance(self.data_file, type(None)):
+            self.data_file.close()
+
+        self.data_file = open(file, 'rb+')
+        self.data = np.load(self.data_file, allow_pickle=False)
+
+        if len(self.data) != 0:
+            self.__new_replay_event.emit((self.maps_table, self.data, None))
+
+
     def __save_data(self, data):
         # TODO:
-        # [ 
+        # [
         #   hit_offset, release_offset       # hit timing
         #   keys, timestamp, map_id          # metadata
         #   ic0, ic1, ic2, ... ic18,         # note offset from current hit to prev note of each column
         #   ip0, ip1, ip2, ... ip18,         # note offset from prev hit to prev prev note of each column
         #   h0, h1, h2, ... h18,             # hold state for each column at release timing
-        #   
+        #
         # ]
+        if isinstance(self.data_file, type(None)):
+            self.new_file()
+
         self.data_file.close()
 
         self.data = np.insert(self.data, 0, data, axis=0)
@@ -90,7 +111,7 @@ class Recorder(QtCore.QObject):
 
     def __handle_new_replay(self, replay_path):
         time.sleep(1)
-    
+
         #print('New replay detected!')
 
         try: replay, beatmap, hash = self.__get_files(replay_path)
@@ -109,7 +130,7 @@ class Recorder(QtCore.QObject):
         self.__new_replay_event.emit((self.maps_table, self.data, beatmap.metadata.name + ' ' + replay.get_name()))
 
 
-    def __process_mods(self, map_data, replay_data, replay):
+    def __process_mods(self, map_data, replay_data, replay: Replay):
         mods = 0
 
         if replay.mods.has_mod('DT') or replay.mods.has_mod('NC'):
@@ -129,7 +150,7 @@ class Recorder(QtCore.QObject):
         if len(self.maps_table) == 0:
             data = OsuDbReader.get_beatmap_md5_paths(f'{self.osu_path}/osu!.db')
             self.maps_table.insert_multiple(data)
-            
+
             num_beatmaps_read = OsuDbReader.get_num_beatmaps(f'{self.osu_path}/osu!.db')
             self.meta_table.upsert({ 'num_maps' : num_beatmaps_read }, tinydb.where('num_maps').exists())
 
@@ -154,8 +175,17 @@ class Recorder(QtCore.QObject):
 
         if num_maps_changed or osu_db_modified:
             if osu_db_modified:
-                user_input = input('osu!.db was modified. If you modified a map for testing, it will not be found until you rebuild db. Rebuild db? (y/n)')
-                if not 'y' in user_input.lower(): return
+                msg = QtWidgets.QMessageBox()
+                msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
+                msg.setWindowTitle('Recorder')
+                msg.setText('osu!.db was modified. If you modified a map for testing, it will not be found until you rebuild db. Rebuild db?')
+                msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+                msg.show()
+                msg.raise_()
+                ret = msg.exec_()
+
+                if ret == QtWidgets.QMessageBox.StandardButton.No:
+                    return
 
             data = OsuDbReader.get_beatmap_md5_paths(f'{self.osu_path}/osu!.db')
             self.db.drop_table('maps')
@@ -176,7 +206,7 @@ class Recorder(QtCore.QObject):
             return
 
         if replay.game_mode != Gamemode.MANIA:
-            print('Only mania gamemode supported for now')            
+            print('Only mania gamemode supported for now')
             return
 
         print('Determining beatmap...')
@@ -247,7 +277,7 @@ class Recorder(QtCore.QObject):
                 # Save note interval data reference to column
                 note_intervals[col] = intervals
             '''
-            
+
             # Append data entries for column
             data.append(np.c_[ id_dat, timestamp, timings, offsets, htypes, col_dat, hash, mod_data ])
 

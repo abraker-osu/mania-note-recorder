@@ -1,16 +1,14 @@
 import sys
 
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
+from PyQt5 import QtWidgets
 
 from mania_monitor_app import ManiaMonitor
 
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     app.setStyleSheet(open('stylesheet.css').read())
 
-    ex  = ManiaMonitor('C:/Games/osu!')
+    ex  = ManiaMonitor()
     sys.exit(app.exec_())

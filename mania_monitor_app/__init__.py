@@ -27,8 +27,10 @@ class ManiaMonitor(QtWidgets.QMainWindow):
     from ._note_interval_graph import NoteIntervalGraph
     from ._interval_offset_graph import IntervalOffsetGraph
 
-    def __init__(self, osu_path):
+    def __init__(self):
         QtWidgets.QMainWindow.__init__(self)
+
+        print('Checking app config...')
 
         if not os.path.isdir(AppConfig.cfg['osu_dir']):
             msg = QtWidgets.QMessageBox()
@@ -56,9 +58,15 @@ class ManiaMonitor(QtWidgets.QMainWindow):
             with open('config.json', 'w') as f:
                 json.dump(AppConfig.cfg, f, indent=4)
 
+        print('Initializing gui...')
+
         self.__init_gui()
+        os.makedirs('data', exist_ok=True)
+
         self.score_db = tinydb.TinyDB('data/scores.json')
         self.nps_table = self.score_db.table('nps')
+
+        print('Initializing recorder...')
 
         self.recorder = Recorder(AppConfig.cfg['osu_dir'], self.__handle_new_replay_qt)
         self.show()
@@ -70,10 +78,21 @@ class ManiaMonitor(QtWidgets.QMainWindow):
         self.nps_action = QtWidgets.QAction("&Top nps", self)
         self.nps_action.triggered.connect(lambda: self.__update_top_nps(show=True))
 
+        self.new_action = QtWidgets.QAction("&New", self)
+        self.new_action.triggered.connect(self.__do_new_recording)
+
+        self.open_action = QtWidgets.QAction("&Open", self)
+        self.open_action.triggered.connect(self.__open_recording_dialog)
+
         self.view_menu = QtWidgets.QMenu("&View", self)
         self.view_menu.addAction(self.nps_action)
 
+        self.file_menu = QtWidgets.QMenu("&File", self)
+        self.file_menu.addAction(self.new_action)
+        self.file_menu.addAction(self.open_action)
+
         self.menu_bar = QtWidgets.QMenuBar(self)
+        self.menu_bar.addMenu(self.file_menu)
         self.menu_bar.addMenu(self.view_menu)
 
         self.main_widget = QtWidgets.QWidget()
@@ -100,10 +119,10 @@ class ManiaMonitor(QtWidgets.QMainWindow):
         ManiaMonitor.NoteOffsetProcGraph.__init__(self, pos='below', relative_to='NoteOffsetGraph')
         ManiaMonitor.HitDistrGraph.__init__(self, pos='top')
         ManiaMonitor.HitOffsetGraph.__init__(self, pos='below', relative_to='HitDistrGraph')
-        ManiaMonitor.NoteDistrGraph.__init__(self, pos='right', relative_to='NoteDistrGraph')
-        ManiaMonitor.AvgDistrGraph.__init__(self, pos='below', relative_to='NoteDistrGraph')
-        ManiaMonitor.StddevDistrGraph.__init__(self, pos='below', relative_to='AvgDistrGraph')
-        ManiaMonitor.IntervalOffsetGraph.__init__(self, pos='below', relative_to='StddevDistrGraph')
+        #ManiaMonitor.NoteDistrGraph.__init__(self, pos='right', relative_to='NoteDistrGraph')
+        #ManiaMonitor.AvgDistrGraph.__init__(self, pos='below', relative_to='NoteDistrGraph')
+        #ManiaMonitor.StddevDistrGraph.__init__(self, pos='below', relative_to='AvgDistrGraph')
+        #ManiaMonitor.IntervalOffsetGraph.__init__(self, pos='below', relative_to='StddevDistrGraph')
         ManiaMonitor.NoteIntervalGraph.__init__(self, pos='right', relative_to='AvgStddevDistrGraph')
         ManiaMonitor.MapDisplay.__init__(self, pos='below', relative_to='NoteIntervalGraph')
         ManiaMonitor.PlaysGraph.__init__(self, pos='bottom')
@@ -112,24 +131,24 @@ class ManiaMonitor(QtWidgets.QMainWindow):
             lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
         )
 
-        ManiaMonitor.NoteOffsetProcGraph.region_changed_event.connect(
-            lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
-        )
+        # ManiaMonitor.NoteOffsetProcGraph.region_changed_event.connect(
+        #     lambda event_data: ManiaMonitor.NoteDistrGraph._plot_data(self, self.data_cache, event_data)
+        # )
 
-        ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
-            lambda event_data: ManiaMonitor.StddevDistrGraph._plot_data(self, event_data)
-        )
+        # ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
+        #     lambda event_data: ManiaMonitor.StddevDistrGraph._plot_data(self, event_data)
+        # )
 
-        ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
-            lambda event_data: ManiaMonitor.AvgDistrGraph._plot_data(self, event_data)
-        )
+        # ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
+        #     lambda event_data: ManiaMonitor.AvgDistrGraph._plot_data(self, event_data)
+        # )
+
+        # ManiaMonitor.NoteIntervalGraph.calc_done_event.connect(
+        #     lambda event_data: ManiaMonitor.IntervalOffsetGraph._plot_data(self, event_data)
+        # )
 
         ManiaMonitor.NoteOffsetProcGraph.calc_done_event.connect(
             lambda event_data: ManiaMonitor.MapDisplay._plot_stddevs(self, event_data)
-        )
-
-        ManiaMonitor.NoteIntervalGraph.calc_done_event.connect(
-            lambda event_data: ManiaMonitor.IntervalOffsetGraph._plot_data(self, event_data)
         )
 
         ManiaMonitor.IntervalOffsetGraph.calc_done_event.connect(
@@ -140,6 +159,8 @@ class ManiaMonitor(QtWidgets.QMainWindow):
     def __handle_new_replay_qt(self, args):
         maps_table, data, title = args
         self.data_cache = data
+
+        print(f'Handling new replay "{title}"...')
 
         if title != None:
             try: self.setWindowTitle(title)
@@ -238,6 +259,24 @@ class ManiaMonitor(QtWidgets.QMainWindow):
             self.__handle_new_replay_qt((None, self.recorder.data, None))
 
             self.__update_top_nps()
+
+
+    def __do_new_recording(self):
+        self.map_list.clear()
+        self.map_list_data.clear()
+        self.recorder.new_file()
+
+
+    def __open_recording_dialog(self):
+        name_filter = 'npy files (*.npy)'
+
+        file_pathname = QtWidgets.QFileDialog.getOpenFileName(self, 'Open data file',  f'./data', name_filter)[0]
+        if len(file_pathname) == 0:
+            return
+
+        self.map_list.clear()
+        self.map_list_data.clear()
+        self.recorder.open_file(file_pathname)
 
 
     def __record_nps(self, nps_data):

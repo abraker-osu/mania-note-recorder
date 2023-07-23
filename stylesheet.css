@@ -17,6 +17,10 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
     background: none;
 }
 
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
 QScrollBar::handle {
     background: #5a5b77;
     border:          none;
@@ -38,8 +42,195 @@ QScrollBar::sub-line:horizontal {
     background: none;
 }
 
+QScrollBar::add-line:vertical {
+    border:     none;
+    background: none;
+}
+
+QScrollBar::sub-line:vertical {
+    border:     none;
+    background: none;
+}
+
 QSplitter::handle {
     background:           #c2c2c2;
     width:      1px;
     border:     1px solid #c2c2c2;
+}
+
+QPushButton:hover {
+    background: #353646;
+}
+
+QPushButton {
+    min-height: 24px;
+    max-height: 24px;
+    background: #232329;
+}
+
+QPushButton:pressed {
+    background: #222227;
+}
+
+QSlider::handle {
+    background: #007AD9;
+}
+
+QSlider::handle:hover {
+    background: #0091ff;
+}
+
+QLabel[hoverable=true]:hover {
+    background: #353646;
+}
+
+QLineEdit {
+    /*max-width: 32px;*/
+    background: #2e2e36;
+}
+
+QLineEdit[Error=true] {
+    background: #be5316;
+}
+
+QLineEdit[Unsaved=true] {
+    border-bottom: 2px solid qlineargradient(x1: 0, y1: 1, x2: 0, y2: 0, stop: 0 #fffb00, stop: 1 rgba(255, 220, 0, 0%));
+}
+
+QTextEdit {
+    background: #2e2e36;
+}
+
+QPlainTextEdit {
+    background: #2e2e36;
+}
+
+QSpinBox
+{
+    border: None;
+    border-radius: 5px;
+    background-color: #353646;
+    max-width: 48px;
+}
+
+QDoubleSpinBox
+{
+    border: None;
+    border-radius: 5px;
+    background-color: #353646;
+    max-width: 48px;
+}
+
+DockLabel[orientation='vertical'] {
+    border-top-right-radius: 0px;
+    border-top-left-radius: 3px;
+    border-bottom-right-radius: 0px;
+    border-bottom-left-radius: 3px;
+    border-width: 0px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    font-size: 14px;
+}
+
+DockLabel[orientation='horizontal'] {
+    border-top-right-radius: 3px;
+    border-top-left-radius: 3px;
+    border-bottom-right-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-width: 0px;
+    padding-left: 13px;
+    padding-right: 13px;
+    font-size: 14px;
+}
+
+DockLabel[selected=true] {
+    background-color : #66c;
+    color : #fff;
+}
+
+DockLabel[selected=true][orientation='horizontal'] {
+    border-right: 2px solid #55B;
+}
+
+DockLabel[selected=true][orientation='vertical'] {
+    border-bottom: 2px solid #55B;
+}
+
+DockLabel[selected=false] {
+    background-color : #44a;
+    color : #aaa;
+}
+
+DockLabel[selected=false][orientation='horizontal'] {
+    border-right: 2px solid #339;
+}
+
+DockLabel[selected=false][orientation='vertical'] {
+    border-bottom: 2px solid #339;
+}
+
+QTabBar {
+    background: #00ffffff;
+}
+
+QTabBar::tab {
+    background: #2e2e36;
+    color: #aaa;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #353646;
+    border-bottom-color: #2e2e36;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    min-height: 15px;
+    padding: 2px;
+}
+
+QTabBar::tab:selected {
+    border-color: #454658;
+    background: #454658;
+}
+
+QTabBar::tab:!selected {
+    margin-top: 2px;
+}
+
+QTabBar[colorToggle=true]::tab {
+    background: #ff0000;
+}
+
+QRadioButton:disabled {
+    color:#929292;
+}
+
+QScrollArea {
+    background-color: #222227;
+    border: 1px solid black;
+}
+
+QProgressBar {
+    border: 2px solid #222227;
+    color: #ffffff;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+}
+
+QProgressBar::chunk {
+    background-color: #114e13;
+    width: 20px;
+}
+
+QTableView QTableCornerButton::section {
+    background: #222227;
+}
+
+QTableView QTableCornerButton::section:hover {
+    background: #353646;
+}
+
+QHeaderView::section {
+    background-color: #222227;
+    padding: 4px;
+    border: 1px solid #1d1d20;
 }
