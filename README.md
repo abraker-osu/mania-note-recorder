@@ -6,7 +6,7 @@ This is a tool made to record multiple scores on the same map. After playing a m
 
 ![image](https://github.com/abraker-osu/mania-note-recorder/assets/4358724/75439695-c25a-4f63-864a-2cbeb215498b)
 
-### How to set this up (guide for complete noobs):
+### Running from source:
 
 1. You will need git. You can download it here: https://git-scm.com/
 
@@ -27,16 +27,16 @@ pip install -r requirements.txt
 ```
 If that fails, use:
 ```
-py -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 7. Open run.py in text editor or something and change the osu path you see to the one you have. Make sure to change back slashes to forward slashes if there are any.
 
 8. Run the tool with the following command:
 ```
-py run.py
+python3 run.py
 ```
 
-9. Play any map of your choosing (HT, DT, MR mods supported). DONT MIX MAPS, DONT MIX HT/DT MODS. If you want to record another map, rename the osu_performance_recording_v1.npy file in the data folder first (make sure the tool is closed when you do it). 
+9. Play any map of your choosing (HT, DT, MR mods supported). DONT MIX HT/DT MODS.
 
 NOTE: Scoring processor has a tendency to break if you mash, so don't play anything too ridiculously hard. I am trying to fix that bug.
