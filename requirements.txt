@@ -1,9 +1,12 @@
+# Runtime
 -r osu_analysis/requirements.txt
 
-setuptools>41.2.0
-numpy
-pyqt5
+numpy>=1.22.0,<=1.26.4
+pyqt6
 pyqtgraph>=0.12.1
 watchdog
 tinydb
+
+# Building
+setuptools>41.2.0
 pyinstaller
