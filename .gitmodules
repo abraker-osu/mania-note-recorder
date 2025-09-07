@@ -1,6 +1,0 @@
-[submodule "osu_analysis"]
-	path = osu_analysis
-	url = https://github.com/abraker-osu/osu_analysis.git
-[submodule "osu_interfaces"]
-	path = osu_interfaces
-	url = https://github.com/abraker-osu/osu_interfaces.git

@@ -52,7 +52,7 @@ class NoteIntervalGraph():
         note_columns = data[:, Data.KEYS]
         note_timings = data[:, Data.TIMINGS] - data[:, Data.OFFSETS]
 
-        # num_interval size = note timings size - num columns becuase delta is taken per column
+        # num_interval size = note timings size - num columns because delta is taken per column
         num_columns = np.unique(note_columns).shape[0]
         num_intervals = note_timings.shape[0] - num_columns
 
