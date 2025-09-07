@@ -58,7 +58,7 @@ if "%VIRTUAL_ENV%" == "" (
     EXIT /B 1
 )
 
-%GIT% config core.longpaths true
+%GIT% config --system core.longpaths true
 if %ERRORLEVEL% NEQ 0 (
     echo Failed to set git longpaths!
     EXIT /B 1

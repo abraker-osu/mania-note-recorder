@@ -10,7 +10,7 @@ This is a tool made to record multiple scores on the same map. After playing a m
 
 1. You will need git. You can download it here: https://git-scm.com/
 
-2. You will need python, at least version 3.8. You can download it here: https://www.python.org/downloads/. THERE IS A STEP THAT ASKS WHETHER TO ADD TO PATH. MAKE SURE TO CHECK THAT.
+2. You will need python, at least version 3.10. You can download it here: https://www.python.org/downloads/. THERE IS A STEP THAT ASKS WHETHER TO ADD TO PATH. MAKE SURE TO CHECK THAT.
 
 3. Once git is installed, create a folder somewhere where the tool will reside in (desktop or documents, doesn't matter)
 

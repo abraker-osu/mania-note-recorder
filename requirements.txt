@@ -1,6 +1,4 @@
 # Runtime
--r osu_analysis/requirements.txt
-
 numpy>=1.22.0,<=1.26.4
 pyqt6
 pyqtgraph>=0.12.1

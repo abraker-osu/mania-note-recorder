@@ -42,11 +42,11 @@ if __name__ == '__main__':
                     StringTable(
                         u'040904B0', [
                             StringStruct(u'CompanyName',      u'abraker95'),
-                            StringStruct(u'FileDescription',  u'An analysis tool for osu! beatmaps, replays, scores, and more!'),
+                            StringStruct(u'FileDescription',  u'An analysis tool for osu!mania beatmaps and replays'),
                             StringStruct(u'FileVersion',      u'{data.year}.{data.month}.{data.day}.{10000*data.hour + 100*data.minute + data.second}'),
-                            StringStruct(u'InternalName',     u'osu-performance-analyzer'),
-                            StringStruct(u'OriginalFilename', u'osu-performance-analyzer.exe'),
-                            StringStruct(u'ProductName',      u'osu-performance-analyzer'),
+                            StringStruct(u'InternalName',     u'osu-note-recorder'),
+                            StringStruct(u'OriginalFilename', u'osu-note-recorder.exe'),
+                            StringStruct(u'ProductName',      u'osu-note-recorder'),
                             StringStruct(u'ProductVersion',   u'{data.year}.{data.month}.{data.day}')
                         ]
                     )
