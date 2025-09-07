@@ -1,0 +1,91 @@
+{
+    "settings": {
+        "python.analysis.typeCheckingMode": "standard",
+        "python.envFile":                   "${workspaceFolder}/.env",
+        "python.defaultInterpreterPath" :   "${workspaceFolder}/venv_win/Scripts/python.exe",
+        "python.analysis.extraPaths" : [
+            "${workspaceFolder}/venv_win/Lib/site-packages",
+            "${workspaceFolder}/venv_win/src",
+            "${workspaceFolder}/venv_nix/src",
+            "${workspaceFolder}/src"
+        ],
+        "python.terminal.activateEnvInCurrentTerminal": true,
+
+        "files.associations": {
+            "build.spec": "python"
+        },
+    },
+
+    "folders": [
+        {
+            "name": "Note Recorder",
+            "path": "."
+        }
+    ],
+
+    "tasks": {
+        "version": "2.0.0",
+        "presentation": {
+            "echo":   false,
+            "reveal": "always",
+            "focus":  true,
+            "panel":  "shared",
+            "clear":  false,
+
+            "showReuseMessage": true,
+            "revealProblems":   "onProblem"
+        },
+
+        "tasks": [ {
+                "label":   "Recorder - Setup",
+                "windows": { "command": "scripts\\setup.bat install" },
+                "linux":   { "command": "scripts/setup.sh install" },
+                "type":    "shell",
+                "detail":  "Sets up the project for development",
+            }, {
+                "label":   "Recorder - Update libs",
+                "windows": { "command": "scripts\\update.bat all" },
+                "linux":   { "command": "scripts/update.sh all" },
+                "type":    "shell",
+                "detail":  "Updates the project libraries",
+            }, {
+                "label":   "Recorder - Setup all",
+                "windows": { "command": "scripts\\setup.bat install all" },
+                "linux":   { "command": "scripts/setup.sh install all" },
+                "type":    "shell",
+                "detail":  "Sets up the project and submodules for development",
+            }, {
+                "label":   "Recorder - Fix project",
+                "windows": { "command": "scripts\\setup.bat" },
+                "linux":   { "command": "scripts/setup.sh" },
+                "type":    "shell",
+                "detail":  "Fixes submodules paths and git index",
+            }, {
+                "label":   "Recorder - Clean",
+                "windows": { "command": "scripts\\clean.bat" },
+                "linux":   { "command": "scripts/clean.sh" },
+                "type":    "shell",
+                "detail":  "Removes all pycache, generated files, and builds",
+            }, {
+                "label":   "Recorder - Run",
+                "windows": { "command": "scripts\\run.bat \"src\\run.py\"" },
+                "linux":   { "command": "scripts/run.sh \"src/run.py\"" },
+                "type":    "shell",
+                "detail":  "Runs the project",
+            }, {
+                "label":   "Recorder - Build",
+                "windows": { "command": "scripts\\build.bat" },
+                "linux":   { "command": "scripts/build.sh" },
+                "type":    "shell",
+                "detail":  "Builds the project for distribution",
+            }
+        ]
+    },
+
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "forbeslindesay.forbeslindesay-taskrunner"
+        ]
+    }
+}
