@@ -1,53 +1,64 @@
+from typing import Callable
 
-# Custom implementation of qt signal alternative
-# because qt is retarded and doesn't support multiple inheritence
-#
-# Basically this is used as a decorator and adds a list of functions to the function.
-# When emit is called, all the functions in the list are run. Their returns are collected
-#     into Func.returns as the function execute
-# NOTE: The when a function is connected to another function, the connection applies to all
-#     instances of the class the function is defined in
-def callback(func):
 
-    def Func(*args, **kwargs):
+def callback(func: Callable) -> Callable:
+    """
+    Custom implementation of qt signal alternative
+    because qt is retarded and doesn't support multiple inheritence
+
+    Basically this is used as a decorator and adds a list of functions to the function.
+    When emit is called, all the functions in the list are run. Their returns are collected
+        into Func.returns as the function execute
+
+    NOTE: The when a function is connected to another function, the connection applies to all
+        instances of the class the function is defined in
+    """
+    def Func(*args: list, **kwargs: dict) -> Callable:
         return func(*args, **kwargs)
-    
+
     class FuncHelper():
 
         @staticmethod
-        def add_callback(callback, inst=None):
+        def add_callback(callback: Callable, inst: object = None) -> Callable:
             if not inst in Func.callbacks:
                 Func.callbacks[inst] = set()
-            
+
             Func.callbacks[inst].add(callback)
             return Func
 
         @staticmethod
-        def rmv_callback(callback, inst=None):
+        def rmv_callback(callback: Callable, inst: object = None) -> Callable:
             try: Func.callbacks[inst].remove(callback)
-            except KeyError: pass
+            except KeyError:
+                pass
+
             return Func
 
         @staticmethod
-        def exec_callbacks(*args, inst=None, **kwargs):
-            if not inst in Func.callbacks: return Func
+        def exec_callbacks(*args: list, inst: object = None, **kwargs: dict) -> Callable:
+            if not inst in Func.callbacks:
+                return Func
 
             Func.returns = {}
+
             # Copy because one of the callbacks can be a disconnect to the refered callbacks
             # This would effectively change the size of Func.callbacks, causing an exception
             for callback in Func.callbacks[inst].copy():
-                if Func.anti_recurse: continue
-                
+                if Func.anti_recurse:
+                    continue
+
                 Func.anti_recurse = True
                 Func.returns[callback] = callback(*args, **kwargs)
                 Func.anti_recurse = False
 
             return Func
 
-        @staticmethod 
-        def get_return_for(callback):
-            if not callback in Func.returns: return None
-            else: return Func.returns[callback]
+        @staticmethod
+        def get_return_for(callback: Callable) -> object | None:
+            if not callback in Func.returns:
+                return None
+            else:
+                return Func.returns[callback]
 
     # This is required to ensure emiting from a function it is connected to
     # will not result in infinite recursion via self reference. This causes
@@ -59,6 +70,6 @@ def callback(func):
     Func.disconnect   = FuncHelper.rmv_callback
     Func.emit         = FuncHelper.exec_callbacks
     Func.ret          = FuncHelper.get_return_for
-    
+
     Func.callbacks = {}
     return Func

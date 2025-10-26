@@ -1,51 +1,62 @@
 import pyqtgraph
-
-from PyQt5.QtGui import *
-import numpy as np
 from pyqtgraph.functions import mkPen
 
-from osu_analysis import ManiaScoreData
-from osu_performance_recorder import Data
+import numpy as np
 
-from ._callback import callback
+from osu_analysis import ManiaScoreData
+
+from note_recorder import Data
+from graph_mgr import GraphManager
+
+from misc._callback import callback
 
 
 class NoteIntervalGraph():
 
     @callback
-    class calc_done_event(): pass
+    class calc_done_event():
+        pass
 
-    def __init__(self, pos, relative_to=None):
+    def __init__(self, graph_mgr: GraphManager, pos, relative_to=None):
 
-        self.__id = __class__.__name__
-        self._create_graph(
+        self.__id        = __class__.__name__
+        self.__widget    = pyqtgraph.PlotWidget(title='Note intervals freq')
+        self.__graph_mgr = graph_mgr
+
+        self.__graph_mgr.create_graph(
             graph_id    = self.__id,
             pos         = pos,
             relative_to = relative_to,
-            widget      = pyqtgraph.PlotWidget(title='Note intervals freq'),
+            widget      = self.__widget,
         )
 
         # hit_offsets graph
-        self.graphs[self.__id]['widget'].getPlotItem().getAxis('left').enableAutoSIPrefix(False)
-        self.graphs[self.__id]['widget'].getPlotItem().getAxis('bottom').enableAutoSIPrefix(False)
-        self.graphs[self.__id]['widget'].setLabel('left', 'Freq', units='#', unitPrefix='')
-        self.graphs[self.__id]['widget'].setLabel('bottom', 'Interval', units='ms', unitPrefix='')
-        self.graphs[self.__id]['widget'].setLimits(yMin=-1, yMax=1000)
+        plot_item = self.__widget.getPlotItem()
+        assert isinstance(plot_item, pyqtgraph.PlotItem)
+
+        plot_item.getAxis('left').enableAutoSIPrefix(False)
+        plot_item.getAxis('bottom').enableAutoSIPrefix(False)
+        self.__widget.setLabel('left', 'Freq', units = '#', unitPrefix = '')
+        self.__widget.setLabel('bottom', 'Interval', units = 'ms', unitPrefix = '')
+        self.__widget.setLimits(yMin = -1, yMax = 1000)
 
         self.__error_bar_graph = pyqtgraph.ErrorBarItem(beam=0)
-        self.graphs[self.__id]['widget'].addItem(self.__error_bar_graph)
+        self.__widget.addItem(self.__error_bar_graph)
 
 
-    def _plot_data(self, data):
-        NoteIntervalGraph.__plot_note_intervals(self, data)
+    def plot_data(self, data):
+        self.__plot_note_intervals(data)
 
 
     def __plot_note_intervals(self, data):
         # Gets hit presses and misses for the latest play
-        score_filter = \
-            (data[:, Data.TIMESTAMP] == max(data[:, Data.TIMESTAMP])) & \
-            ((data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP) | \
-            (data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_MISSP))
+        score_filter = (
+              ( data[:, Data.TIMESTAMP] == max(data[:, Data.TIMESTAMP]) )
+            & (
+                ( data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_HITP )
+              | ( data[:, Data.HIT_TYPE] == ManiaScoreData.TYPE_MISSP )
+            )
+        )
         data = data[score_filter]
 
         # Extract timings and hit_offsets
@@ -91,7 +102,10 @@ class NoteIntervalGraph():
         xMax = x[-1] + 100
 
         # Set plot data
-        self.__error_bar_graph.setData(x=x, y=y/2, top=y/2, bottom=y/2, pen=mkPen((200, 200, 200, 200), width=5))
-        self.graphs[self.__id]['widget'].setLimits(xMin=xMin, xMax=xMax)
+        self.__error_bar_graph.setData(
+            x = x, y = y/2, top = y/2, bottom = y/2,
+            pen = mkPen((200, 200, 200, 200), width = 5)
+        )
+        self.__widget.setLimits(xMin = xMin, xMax = xMax)
 
         NoteIntervalGraph.calc_done_event.emit(interval_data)

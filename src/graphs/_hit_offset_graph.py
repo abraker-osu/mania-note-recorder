@@ -1,60 +1,65 @@
 import pyqtgraph
-from pyqtgraph import dockarea
-from pyqtgraph.Qt import QtCore, QtGui
-
-from PyQt5.QtGui import *
 import numpy as np
 
 from osu_analysis import ManiaScoreData
-from osu_performance_recorder import Data
-from .plots.miss_plot import MissPlotItem
+
+from graph_mgr import GraphManager
+from note_recorder import Data
+
+from plots.miss_plot import MissPlotItem
+
 
 
 class HitOffsetGraph():
 
-    def __init__(self, pos, relative_to=None):
+    def __init__(self, graph_mgr: GraphManager, pos, relative_to=None):
+        self.__id        = __class__.__name__
+        self.__widget    = pyqtgraph.PlotWidget(title='Hit offsets')
+        self.__graph_mgr = graph_mgr
 
-        self.__id = __class__.__name__
-        self._create_graph(
+        self.__graph_mgr.create_graph(
             graph_id    = self.__id,
             pos         = pos,
             relative_to = relative_to,
-            widget      = pyqtgraph.PlotWidget(title='Hit offsets'),
+            widget      = self.__widget,
         )
 
         # hit_offsets graph
-        self.graphs[self.__id]['widget'].getPlotItem().getAxis('left').enableAutoSIPrefix(False)
-        self.graphs[self.__id]['widget'].getPlotItem().getAxis('bottom').enableAutoSIPrefix(False)
-        self.graphs[self.__id]['widget'].setLabel('left', 'Hit offset', units='ms', unitPrefix='')
-        self.graphs[self.__id]['widget'].setLabel('bottom', 'Time', units='ms', unitPrefix='')
-        self.graphs[self.__id]['widget'].setLimits(yMin=-200, yMax=200)
+        plot_item = self.__widget.getPlotItem()
+        assert isinstance(plot_item, pyqtgraph.PlotItem)
+
+        plot_item.getAxis('left').enableAutoSIPrefix(False)
+        plot_item.getAxis('bottom').enableAutoSIPrefix(False)
+        self.__widget.setLabel('left', 'Hit offset', units='ms', unitPrefix='')
+        self.__widget.setLabel('bottom', 'Time', units='ms', unitPrefix='')
+        self.__widget.setLimits(yMin=-200, yMax=200)
 
         self.__miss_plot = MissPlotItem()
-        self.graphs[self.__id]['widget'].addItem(self.__miss_plot)
+        self.__widget.addItem(self.__miss_plot)
 
-        self.graphs[self.__id]['widget'].addLine(x=None, y=0, pen=pyqtgraph.mkPen((0, 150, 0, 255), width=1))
+        self.__widget.addLine(x=None, y=0, pen=pyqtgraph.mkPen((0, 150, 0, 255), width=1))
 
         self.__offset_avg_line = pyqtgraph.InfiniteLine(angle=0, pen=pyqtgraph.mkPen((255, 255, 0, 150), width=1))
-        self.graphs[self.__id]['widget'].addItem(self.__offset_avg_line)
+        self.__widget.addItem(self.__offset_avg_line)
 
         self.__offset_std_line_pos = pyqtgraph.InfiniteLine(angle=0, pen=pyqtgraph.mkPen((255, 150, 0, 150), width=1))
         self.__offset_std_line_neg = pyqtgraph.InfiniteLine(angle=0, pen=pyqtgraph.mkPen((255, 150, 0, 150), width=1))
 
-        self.graphs[self.__id]['widget'].addItem(self.__offset_std_line_pos)
-        self.graphs[self.__id]['widget'].addItem(self.__offset_std_line_neg)
+        self.__widget.addItem(self.__offset_std_line_pos)
+        self.__widget.addItem(self.__offset_std_line_neg)
 
-        self.__offset_avg_plot = self.graphs[self.__id]['widget'].plot()
+        self.__offset_avg_plot = self.__widget.plot()
 
-        self.__offset_std_pos = self.graphs[self.__id]['widget'].plot()
-        self.__offset_std_neg = self.graphs[self.__id]['widget'].plot()
-        self.graphs[self.__id]['widget'].addItem(pyqtgraph.FillBetweenItem(self.__offset_std_pos, self.__offset_std_neg, (100, 100, 255, 50)))
+        self.__offset_std_pos = self.__widget.plot()
+        self.__offset_std_neg = self.__widget.plot()
+        self.__widget.addItem(pyqtgraph.FillBetweenItem(self.__offset_std_pos, self.__offset_std_neg, (100, 100, 255, 50)))
 
 
-    def _plot_data(self, data):
-        HitOffsetGraph.__plot_misses(self, data)
-        HitOffsetGraph.__plot_hit_offsets(self, data)
-        HitOffsetGraph.__plot_avg_global(self, data)
-        HitOffsetGraph.__plot_avg_local(self, data)
+    def plot_data(self, data):
+        self.__plot_misses(data)
+        self.__plot_hit_offsets(data)
+        self.__plot_avg_global(data)
+        self.__plot_avg_local(data)
 
 
     def __plot_hit_offsets(self, data):
@@ -68,13 +73,20 @@ class HitOffsetGraph():
         hit_timings = data[:, Data.TIMINGS]
         hit_offsets = data[:, Data.OFFSETS]
 
+        # Set plot data
+        plot_item = self.__graph_mgr.graphs[self.__id]['plot']
+        assert isinstance(plot_item, pyqtgraph.PlotDataItem)
+
+        plot_item.setData(
+            hit_timings, hit_offsets,
+            pen = None, symbol = 'o', symbolPen = None, symbolSize = 2, symbolBrush = (100, 100, 255, 200)
+        )
+
         # Calculate view
         xMin = min(hit_timings) - 100
         xMax = max(hit_timings) + 100
 
-        # Set plot data
-        self.graphs[self.__id]['plot'].setData(hit_timings, hit_offsets, pen=None, symbol='o', symbolPen=None, symbolSize=2, symbolBrush=(100, 100, 255, 200))
-        self.graphs[self.__id]['widget'].setLimits(xMin=xMin, xMax=xMax)
+        self.__widget.setLimits(xMin = xMin, xMax = xMax)
 
 
     def __plot_misses(self, data):
@@ -122,10 +134,10 @@ class HitOffsetGraph():
         # Calculate view
         xMin = min(hit_timings)
         xMax = max(hit_timings)
-        
+
         bin_width = 500
         num_bins = (xMax - xMin)/bin_width
-        
+
         bins = np.linspace(xMin, xMax, int(num_bins), endpoint=True)  # Create bin ranges
         idxs = np.digitize(hit_timings, bins)    # Get indices for each bin range (start with 1)
 

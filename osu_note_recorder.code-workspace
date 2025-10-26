@@ -1,6 +1,6 @@
 {
     "settings": {
-        "python.analysis.typeCheckingMode": "standard",
+        "python.analysis.typeCheckingMode": "basic",
         "python.envFile":                   "${workspaceFolder}/.env",
         "python.defaultInterpreterPath" :   "${workspaceFolder}/venv_win/Scripts/python.exe",
         "python.analysis.extraPaths" : [

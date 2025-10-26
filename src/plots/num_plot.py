@@ -1,12 +1,14 @@
 import pyqtgraph
-from pyqtgraph.Qt import QtCore, QtGui
+
+from PyQt6 import QtCore
+from PyQt6 import QtGui
 
 
 class NumPlotItem(pyqtgraph.GraphicsObject):
 
     def __init__(self):
         pyqtgraph.GraphicsObject.__init__(self)
-    
+
         self._x = None
         self._y = None
         self._num = None
@@ -21,7 +23,7 @@ class NumPlotItem(pyqtgraph.GraphicsObject):
 
 
 
-    def setData(self, x, y, num):
+    def setData(self, x: list[int], y: list[int], num: list[int]):
         self._x = x
         self._y = y
         self._num = num
@@ -35,12 +37,12 @@ class NumPlotItem(pyqtgraph.GraphicsObject):
 
 
     def generatePicture(self):
-        if type(self._x) == type(None) or \
-           type(self._y) == type(None) or \
-           type(self._num) == type(None):
+        if isinstance(self._x, type(None)) or \
+           isinstance(self._y, type(None)) or \
+           isinstance(self._num, type(None)):
             return
 
-        ## pre-computing a QPicture object allows paint() to run much more quickly, 
+        ## pre-computing a QPicture object allows paint() to run much more quickly,
         ## rather than re-drawing the shapes every time.
         self._picture = QtGui.QPicture()
 
@@ -55,14 +57,14 @@ class NumPlotItem(pyqtgraph.GraphicsObject):
             painter.drawText(x, y, str(num))
 
         painter.end()
-    
 
-    def paint(self, painter, *args):
+
+    def paint(self, painter: QtGui.QPainter, *args: list):
         painter.drawPicture(0, 0, self._picture)
-    
+
 
     def boundingRect(self):
-        if type(self._x) == type(None) or type(self._y) == type(None):
+        if isinstance(self._x, type(None)) or isinstance(self._y, type(None)):
             return QtCore.QRectF()
 
         if len(self._x) == 0 or len(self._y) == 0:

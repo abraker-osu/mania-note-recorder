@@ -1,17 +1,22 @@
 import os
 import time
-import tinydb
 import datetime
+import typing
 
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+import tinydb
+from tinydb.table import Table
+
+from PyQt6 import QtCore
 
 import numpy as np
 
+from osu_interfaces import Gamemode
 from osu_analysis import ManiaActionData, ManiaScoreData
-from osu_analysis import Replay, BeatmapIO, ReplayIO, Gamemode
-from osu_db_reader.osu_db_reader import OsuDbReader
-from monitor import Monitor
+from replay_reader import Replay, ReplayIO
+from beatmap_reader import BeatmapBase, BeatmapIO
+from osu_db import MapsDB
+from osu_recorder import OsuRecorder
+
 
 
 
@@ -27,13 +32,13 @@ class Data():
     NUM_COLS  = 8
 
 
-class Recorder(QtCore.QObject):
+class NoteRecorder(QtCore.QObject):
 
     __new_replay_event = QtCore.pyqtSignal(tuple)
 
     SAVE_FILE = 'data/recording_v2_{date}.npy'
 
-    def __init__(self, osu_path, callback):
+    def __init__(self, osu_path: str, callback: typing.Callable[[tuple[Table, np.ndarray, str | None]], None]):
         QtCore.QObject.__init__(self)
 
         self.__new_replay_event.connect(callback)
@@ -44,17 +49,20 @@ class Recorder(QtCore.QObject):
         self.maps_table = self.db.table('maps')
         self.meta_table = self.db.table('meta')
 
+        self.file_pathname = ''
         self.data_file = None
         self.data      = None
 
-        self.osu_path = osu_path
-        self.__check_maps_db()
+        self.__osu_path = osu_path
+        self.__maps_db  = MapsDB(osu_path)
+        self.__maps_db.check_db()
 
-        self.monitor = Monitor(osu_path)
-        self.monitor.create_replay_monitor('Replay Grapher', self.__handle_new_replay)
+        self.monitor = OsuRecorder(osu_path, self.__handle_new_replay)
+        self.monitor.start()
 
 
     def __del__(self):
+        assert not isinstance(self.data_file, type(None))
         self.data_file.close()
 
 
@@ -63,13 +71,13 @@ class Recorder(QtCore.QObject):
             self.data_file.close()
 
         date = datetime.datetime.now()
-        file_pathname = Recorder.SAVE_FILE.format(date=f'{date.year}_{date.month}_{date.day}_{date.hour}_{date.minute}_{date.second}')
+        self.file_pathname = self.SAVE_FILE.format(date = f'{date.year}_{date.month}_{date.day}_{date.hour}_{date.minute}_{date.second}')
 
         self.data = np.asarray([])
-        np.save(file_pathname, np.empty((0, Data.NUM_COLS)), allow_pickle=False)
+        np.save(self.file_pathname, np.empty((0, Data.NUM_COLS)), allow_pickle = False)
 
-        self.data_file = open(file_pathname, 'rb+')
-        self.data = np.load(self.data_file, allow_pickle=False)
+        self.data_file = open(self.file_pathname, 'rb+')
+        self.data = np.load(self.data_file, allow_pickle = False)
 
         if len(self.data) != 0:
             self.__new_replay_event.emit((self.maps_table, self.data, None))
@@ -81,12 +89,13 @@ class Recorder(QtCore.QObject):
 
         self.data_file = open(file, 'rb+')
         self.data = np.load(self.data_file, allow_pickle=False)
+        self.file_pathname = file
 
         if len(self.data) != 0:
             self.__new_replay_event.emit((self.maps_table, self.data, None))
 
 
-    def __save_data(self, data):
+    def __save_data(self, data: np.ndarray):
         # TODO:
         # [
         #   hit_offset, release_offset       # hit timing
@@ -99,23 +108,24 @@ class Recorder(QtCore.QObject):
         if isinstance(self.data_file, type(None)):
             self.new_file()
 
+        assert not isinstance(self.data_file, type(None))
         self.data_file.close()
 
-        self.data = np.insert(self.data, 0, data, axis=0)
-        np.save(Recorder.SAVE_FILE, self.data, allow_pickle=False)
+        self.data = np.insert(self.data, 0, data, axis = 0)
+        np.save(self.file_pathname, self.data, allow_pickle=False)
 
         # Now reopen it so it can be used
-        self.data_file = open(Recorder.SAVE_FILE, 'rb+')
+        self.data_file = open(self.file_pathname, 'rb+')
         self.data = np.load(self.data_file, allow_pickle=False)
 
 
-    def __handle_new_replay(self, replay_path):
-        time.sleep(1)
+    def __handle_new_replay(self, beatmap: BeatmapBase | None, replay: Replay):
+        # Needed sleep to wait for osu! to finish writing the replay file
+        time.sleep(2)
 
-        #print('New replay detected!')
-
-        try: replay, beatmap, hash = self.__get_files(replay_path)
-        except TypeError: return
+        if isinstance(beatmap, type(None)):
+            print('Beatmap not found for replay')
+            return
 
         map_data = ManiaActionData.get_action_data(beatmap)
         replay_data = ManiaActionData.get_action_data(replay)
@@ -124,7 +134,7 @@ class Recorder(QtCore.QObject):
         score_data = ManiaScoreData.get_score_data(map_data, replay_data)
 
         # Get data
-        data = self.__get_data(hash, mods, beatmap.difficulty.cs, map_data, score_data, beatmap.metadata.beatmap_id)
+        data = self.__get_data(replay.beatmap_hash, mods, beatmap.difficulty.cs, map_data, score_data, beatmap.metadata.beatmap_id)
         self.__save_data(data)
 
         self.__new_replay_event.emit((self.maps_table, self.data, beatmap.metadata.name + ' ' + replay.get_name()))
@@ -146,59 +156,6 @@ class Recorder(QtCore.QObject):
         return mods
 
 
-    def __check_maps_db(self):
-        if len(self.maps_table) == 0:
-            data = OsuDbReader.get_beatmap_md5_paths(f'{self.osu_path}/osu!.db')
-            self.maps_table.insert_multiple(data)
-
-            num_beatmaps_read = OsuDbReader.get_num_beatmaps(f'{self.osu_path}/osu!.db')
-            self.meta_table.upsert({ 'num_maps' : num_beatmaps_read }, tinydb.where('num_maps').exists())
-
-            last_modified_read = os.stat(f'{self.osu_path}/osu!.db').st_mtime
-            self.meta_table.upsert({ 'last_modified' : last_modified_read }, tinydb.where('last_modified').exists())
-
-            print('Map table did not exist - created it')
-            return
-
-        num_beatmaps_read = OsuDbReader.get_num_beatmaps(f'{self.osu_path}/osu!.db')
-        num_beatmaps_save = self.meta_table.get(tinydb.where('num_maps').exists())
-        if num_beatmaps_save != None:
-            num_beatmaps_save = num_beatmaps_save['num_maps']
-
-        last_modified_read = os.stat(f'{self.osu_path}/osu!.db').st_mtime
-        last_modified_save = self.meta_table.get(tinydb.where('last_modified').exists())
-        if last_modified_save != None:
-            last_modified_save = last_modified_save['last_modified']
-
-        num_maps_changed = num_beatmaps_read != num_beatmaps_save
-        osu_db_modified = last_modified_read != last_modified_save
-
-        if num_maps_changed or osu_db_modified:
-            if osu_db_modified:
-                msg = QtWidgets.QMessageBox()
-                msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
-                msg.setWindowTitle('Recorder')
-                msg.setText('osu!.db was modified. If you modified a map for testing, it will not be found until you rebuild db. Rebuild db?')
-                msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
-                msg.show()
-                msg.raise_()
-                ret = msg.exec_()
-
-                if ret == QtWidgets.QMessageBox.StandardButton.No:
-                    return
-
-            data = OsuDbReader.get_beatmap_md5_paths(f'{self.osu_path}/osu!.db')
-            self.db.drop_table('maps')
-            self.maps_table = self.db.table('maps')
-            self.maps_table.insert_multiple(data)
-
-            self.meta_table.upsert({ 'num_maps' : num_beatmaps_read }, tinydb.where('num_maps').exists())
-            self.meta_table.upsert({ 'last_modified' : last_modified_read }, tinydb.where('last_modified').exists())
-
-        print(num_beatmaps_read, num_beatmaps_save)
-        print(last_modified_read, last_modified_save)
-
-
     def __get_files(self, replay_path):
         try: replay = ReplayIO.open_replay(replay_path)
         except Exception as e:
@@ -216,8 +173,8 @@ class Recorder(QtCore.QObject):
             print('Associated beatmap not found. Do you have it?')
             return
 
-        path = f'{self.osu_path}/Songs'
-        beatmap = BeatmapIO.open_beatmap(f'{self.osu_path}/Songs/{maps[0]["path"]}')
+        path = f'{self.__osu_path}/Songs'
+        beatmap = BeatmapIO.open_beatmap(f'{self.__osu_path}/Songs/{maps[0]["path"]}')
 
         return replay, beatmap, maps[0]["md5"]
 
